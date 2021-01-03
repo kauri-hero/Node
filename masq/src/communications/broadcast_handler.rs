@@ -66,11 +66,11 @@ impl BroadcastHandlerReal {
         match message_body_result {
             Err(_) => (), // Receiver died; masq is going down
             Ok(message_body) => {
-                if let Ok((body, _)) = UiSetupBroadcast::fmb(message_body.clone()) {
+                if let Ok((body, _)) = UiSetupBroadcast::fmb(&message_body) {
                     SetupCommand::handle_broadcast(body, stdout, stderr);
-                } else if let Ok((body, _)) = UiNodeCrashedBroadcast::fmb(message_body.clone()) {
+                } else if let Ok((body, _)) = UiNodeCrashedBroadcast::fmb(&message_body) {
                     CrashNotifier::handle_broadcast(body, stdout, stderr);
-                } else if let Ok((body, _)) = UiNewPasswordBroadcast::fmb(message_body.clone()) {
+                } else if let Ok((body, _)) = UiNewPasswordBroadcast::fmb(&message_body) {
                     ChangePasswordCommand::handle_broadcast(body, stdout, stderr);
                 } else {
                     write!(

@@ -273,7 +273,7 @@ impl Handler<NodeFromUiMessage> for Neighborhood {
 
     fn handle(&mut self, msg: NodeFromUiMessage, _ctx: &mut Self::Context) -> Self::Result {
         let client_id = msg.client_id;
-        if let Ok((body, _)) = UiShutdownRequest::fmb(msg.body) {
+        if let Ok((body, _)) = UiShutdownRequest::fmb(&msg.body) {
             self.handle_shutdown_order(client_id, body);
         }
     }

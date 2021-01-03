@@ -115,9 +115,9 @@ impl Handler<NodeFromUiMessage> for Dispatcher {
     type Result = ();
 
     fn handle(&mut self, msg: NodeFromUiMessage, _ctx: &mut Self::Context) -> Self::Result {
-        if let Ok((crash_request, _)) = UiCrashRequest::fmb(msg.body.clone()) {
+        if let Ok((crash_request, _)) = UiCrashRequest::fmb(&msg.body) {
             handle_ui_crash_request(crash_request, &self.logger, self.crashable, CRASH_KEY);
-        } else if let Ok((_, context_id)) = UiDescriptorRequest::fmb(msg.body) {
+        } else if let Ok((_, context_id)) = UiDescriptorRequest::fmb(&msg.body) {
             self.handle_descriptor_request(msg.client_id, context_id);
         }
     }

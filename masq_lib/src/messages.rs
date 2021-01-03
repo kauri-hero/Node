@@ -61,7 +61,7 @@ pub trait ToMessageBody: serde::Serialize {
 }
 
 pub trait FromMessageBody: DeserializeOwned + Debug {
-    fn fmb(body: MessageBody) -> Result<(Self, u64), UiMessageError>;
+    fn fmb(body: &MessageBody) -> Result<(Self, u64), UiMessageError>;
 }
 
 macro_rules! fire_and_forget_message {
@@ -86,19 +86,25 @@ macro_rules! fire_and_forget_message {
         }
 
         impl FromMessageBody for $message_type {
-            fn fmb(body: MessageBody) -> Result<(Self, u64), UiMessageError> {
+            fn fmb(body: &MessageBody) -> Result<(Self, u64), UiMessageError> {
                 if body.opcode != $opcode {
-                    return Err(UiMessageError::UnexpectedMessage(body.opcode, body.path));
+                    return Err(UiMessageError::UnexpectedMessage(
+                        body.opcode.clone(),
+                        body.path.clone(),
+                    ));
                 };
-                let payload = match body.payload {
-                    Ok(json) => match serde_json::from_str::<Self>(&json) {
+                let payload = match &body.payload {
+                    Ok(json) => match serde_json::from_str::<Self>(json) {
                         Ok(item) => item,
                         Err(e) => return Err(DeserializationError(format!("{:?}", e))),
                     },
-                    Err((code, message)) => return Err(PayloadError(code, message)),
+                    Err((code, message)) => return Err(PayloadError(*code, message.clone())),
                 };
                 if let Conversation(_) = body.path {
-                    return Err(UiMessageError::UnexpectedMessage(body.opcode, body.path));
+                    return Err(UiMessageError::UnexpectedMessage(
+                        body.opcode.clone(),
+                        body.path.clone(),
+                    ));
                 }
                 Ok((payload, 0))
             }
@@ -138,24 +144,30 @@ macro_rules! conversation_message {
         }
 
         impl FromMessageBody for $message_type {
-            fn fmb(body: MessageBody) -> Result<(Self, u64), UiMessageError> {
+            fn fmb(body: &MessageBody) -> Result<(Self, u64), UiMessageError> {
                 if body.opcode != $opcode {
-                    return Err(UiMessageError::UnexpectedMessage(body.opcode, body.path));
+                    return Err(UiMessageError::UnexpectedMessage(
+                        body.opcode.clone(),
+                        body.path.clone(),
+                    ));
                 };
-                let payload = match body.payload {
-                    Ok(json) => match serde_json::from_str::<Self>(&json) {
+                let payload = match &body.payload {
+                    Ok(json) => match serde_json::from_str::<Self>(json) {
                         Ok(item) => item,
                         Err(e) => return Err(DeserializationError(format!("{:?}", e))),
                     },
-                    Err((code, message)) => return Err(PayloadError(code, message)),
+                    Err((code, message)) => return Err(PayloadError(*code, message.clone())),
                 };
-                let context_id = match body.path {
+                let context_id = match &body.path {
                     Conversation(context_id) => context_id,
                     FireAndForget => {
-                        return Err(UiMessageError::UnexpectedMessage(body.opcode, body.path))
+                        return Err(UiMessageError::UnexpectedMessage(
+                            body.opcode.clone(),
+                            body.path.clone(),
+                        ))
                     }
                 };
-                Ok((payload, context_id))
+                Ok((payload, *context_id))
             }
         }
 
@@ -686,7 +698,7 @@ mod tests {
         };
 
         let result: Result<(UiFinancialsResponse, u64), UiMessageError> =
-            UiFinancialsResponse::fmb(message_body);
+            UiFinancialsResponse::fmb(&message_body);
 
         assert_eq!(
             result,
@@ -712,7 +724,7 @@ mod tests {
         };
 
         let result: Result<(UiFinancialsResponse, u64), UiMessageError> =
-            UiFinancialsResponse::fmb(message_body);
+            UiFinancialsResponse::fmb(&message_body);
 
         assert_eq!(
             result,
@@ -729,7 +741,7 @@ mod tests {
         };
 
         let result: Result<(UiFinancialsResponse, u64), UiMessageError> =
-            UiFinancialsResponse::fmb(message_body);
+            UiFinancialsResponse::fmb(&message_body);
 
         assert_eq!(result, Err(PayloadError(100, "error".to_string())))
     }
@@ -744,7 +756,7 @@ mod tests {
         };
 
         let result: Result<(UiFinancialsResponse, u64), UiMessageError> =
-            UiFinancialsResponse::fmb(message_body);
+            UiFinancialsResponse::fmb(&message_body);
 
         assert_eq!(
             result,
@@ -781,7 +793,7 @@ mod tests {
         };
 
         let result: Result<(UiFinancialsResponse, u64), UiMessageError> =
-            UiFinancialsResponse::fmb(message_body);
+            UiFinancialsResponse::fmb(&message_body);
 
         assert_eq!(
             result,
@@ -847,7 +859,7 @@ mod tests {
         };
 
         let result: Result<(UiUnmarshalError, u64), UiMessageError> =
-            UiUnmarshalError::fmb(message_body);
+            UiUnmarshalError::fmb(&message_body);
 
         assert_eq!(
             result,
@@ -865,7 +877,7 @@ mod tests {
         };
 
         let result: Result<(UiUnmarshalError, u64), UiMessageError> =
-            UiUnmarshalError::fmb(message_body);
+            UiUnmarshalError::fmb(&message_body);
 
         assert_eq!(
             result,
@@ -885,7 +897,7 @@ mod tests {
         };
 
         let result: Result<(UiUnmarshalError, u64), UiMessageError> =
-            UiUnmarshalError::fmb(message_body);
+            UiUnmarshalError::fmb(&message_body);
 
         assert_eq!(result, Err(PayloadError(100, "error".to_string())))
     }
@@ -900,7 +912,7 @@ mod tests {
         };
 
         let result: Result<(UiUnmarshalError, u64), UiMessageError> =
-            UiUnmarshalError::fmb(message_body);
+            UiUnmarshalError::fmb(&message_body);
 
         assert_eq!(
             result,
@@ -920,7 +932,7 @@ mod tests {
         };
 
         let result: Result<(UiUnmarshalError, u64), UiMessageError> =
-            UiUnmarshalError::fmb(message_body);
+            UiUnmarshalError::fmb(&message_body);
 
         assert_eq!(
             result,

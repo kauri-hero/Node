@@ -67,7 +67,7 @@ where
         Ok(ntum) => ntum,
         Err(e) => return Err(e.into()),
     };
-    let response: O = match O::fmb(message) {
+    let response: O = match O::fmb(&message) {
         Ok((r, _)) => r,
         Err(e) => {
             writeln!(

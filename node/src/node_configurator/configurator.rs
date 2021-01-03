@@ -59,21 +59,21 @@ impl Handler<NodeFromUiMessage> for Configurator {
     type Result = ();
 
     fn handle(&mut self, msg: NodeFromUiMessage, _ctx: &mut Self::Context) -> Self::Result {
-        if let Ok((body, context_id)) = UiCheckPasswordRequest::fmb(msg.clone().body) {
+        if let Ok((body, context_id)) = UiCheckPasswordRequest::fmb(&msg.body) {
             debug!(
                 &self.logger,
                 "Handling {} message from client {}", msg.body.opcode, msg.client_id
             );
             let response = self.handle_check_password(body, context_id);
             self.send_to_ui_gateway(ClientId(msg.client_id), response);
-        } else if let Ok((body, context_id)) = UiChangePasswordRequest::fmb(msg.clone().body) {
+        } else if let Ok((body, context_id)) = UiChangePasswordRequest::fmb(&msg.body) {
             debug!(
                 &self.logger,
                 "Handling {} message from client {}", msg.body.opcode, msg.client_id
             );
             let response = self.handle_change_password(body, msg.client_id, context_id);
             self.send_to_ui_gateway(ClientId(msg.client_id), response);
-        } else if let Ok((body, context_id)) = UiGenerateWalletsRequest::fmb(msg.clone().body) {
+        } else if let Ok((body, context_id)) = UiGenerateWalletsRequest::fmb(&msg.body) {
             debug!(
                 &self.logger,
                 "Handling {} message from client {}", msg.body.opcode, msg.client_id
@@ -594,7 +594,7 @@ mod tests {
         let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
         let response = ui_gateway_recording.get_record::<NodeToUiMessage>(0);
         let (generated_wallets, context_id) =
-            UiGenerateWalletsResponse::fmb(response.body.clone()).unwrap();
+            UiGenerateWalletsResponse::fmb(&response.body.clone()).unwrap();
         assert_eq!(context_id, 4321);
         assert_eq!(generated_wallets.mnemonic_phrase.len(), 24);
         let mnemonic_phrase = generated_wallets.mnemonic_phrase.join(" ");

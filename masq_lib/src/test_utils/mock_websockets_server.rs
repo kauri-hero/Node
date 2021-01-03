@@ -343,7 +343,7 @@ mod tests {
         let second_actual_response: UiUnmarshalError = connection.receive().unwrap();
 
         let requests = stop_handle.stop();
-        let actual_body: UiSetupResponse = UiSetupResponse::fmb(requests[0].clone().unwrap())
+        let actual_body: UiSetupResponse = UiSetupResponse::fmb(requests[0].as_ref().unwrap())
             .unwrap()
             .0;
         assert_eq!(
@@ -363,12 +363,12 @@ mod tests {
         );
         assert_eq!(
             (first_actual_response, 1),
-            UiSetupResponse::fmb(first_expected_response).unwrap()
+            UiSetupResponse::fmb(&first_expected_response).unwrap()
         );
         assert_eq!(requests[1], Err("}: Bad request :{".to_string()));
         assert_eq!(
             (second_actual_response, 0),
-            UiUnmarshalError::fmb(second_expected_response).unwrap()
+            UiUnmarshalError::fmb(&second_expected_response).unwrap()
         );
     }
 }

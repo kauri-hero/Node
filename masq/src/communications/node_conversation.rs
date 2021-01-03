@@ -308,7 +308,7 @@ mod tests {
             x => panic!("Expected FireAndForgetMessage, got {:?}", x),
         };
         assert_eq!(
-            UiUnmarshalError::fmb(outgoing_message).unwrap(),
+            UiUnmarshalError::fmb(&outgoing_message).unwrap(),
             (message, 0)
         );
         assert_eq!(context_id, 42);

@@ -846,7 +846,7 @@ mod tests {
             UiTrafficConverter::new_unmarshal_to_ui(&actual_json, ClientId(0)).unwrap();
         assert_eq!(actual_struct.target, ClientId(0));
         assert_eq!(
-            UiUnmarshalError::fmb(actual_struct.body).unwrap().0,
+            UiUnmarshalError::fmb(&actual_struct.body).unwrap().0,
             UiUnmarshalError {
                 message: expected_traffic_conversion_message,
                 bad_data: bad_json.to_string(),
@@ -913,7 +913,7 @@ mod tests {
             UiTrafficConverter::new_unmarshal_to_ui(&actual_json, ClientId(0)).unwrap();
         assert_eq!(actual_struct.target, ClientId(0));
         assert_eq!(
-            UiUnmarshalError::fmb(actual_struct.body).unwrap().0,
+            UiUnmarshalError::fmb(&actual_struct.body).unwrap().0,
             UiUnmarshalError {
                 message: expected_traffic_conversion_message,
                 bad_data: bad_message_json.to_string(),

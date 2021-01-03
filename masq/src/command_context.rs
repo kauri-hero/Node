@@ -236,7 +236,7 @@ mod tests {
         write!(subject.stderr(), "This is stderr.").unwrap();
 
         assert_eq!(
-            UiShutdownResponse::fmb(response).unwrap(),
+            UiShutdownResponse::fmb(&response).unwrap(),
             (UiShutdownResponse {}, 1)
         );
         assert_eq!(input, "This is stdin.".to_string());

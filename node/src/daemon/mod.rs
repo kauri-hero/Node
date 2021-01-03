@@ -128,9 +128,9 @@ impl Handler<NodeFromUiMessage> for Daemon {
             "Handing NodeFromUiMessage from client {}: {}", msg.client_id, msg.body.opcode
         );
         let client_id = msg.client_id;
-        if let Ok((setup_request, context_id)) = UiSetupRequest::fmb(msg.body.clone()) {
+        if let Ok((setup_request, context_id)) = UiSetupRequest::fmb(&msg.body) {
             self.handle_setup(client_id, context_id, setup_request);
-        } else if let Ok((_, context_id)) = UiStartOrder::fmb(msg.body.clone()) {
+        } else if let Ok((_, context_id)) = UiStartOrder::fmb(&msg.body) {
             self.handle_start_order(client_id, context_id);
         } else {
             self.handle_unexpected_message(client_id, msg.body);
@@ -624,7 +624,7 @@ mod tests {
             .clone();
         assert_eq!(record.target, ClientId(1234));
         let (payload, context_id): (UiSetupResponse, u64) =
-            UiSetupResponse::fmb(record.body).unwrap();
+            UiSetupResponse::fmb(&record.body).unwrap();
         assert_eq!(context_id, 4321);
         assert_eq!(
             payload,
@@ -701,7 +701,7 @@ mod tests {
             .clone();
         assert_eq!(record.target, ClientId(1234));
         let (payload, context_id): (UiSetupResponse, u64) =
-            UiSetupResponse::fmb(record.body).unwrap();
+            UiSetupResponse::fmb(&record.body).unwrap();
         assert_eq!(context_id, 4321);
         assert_eq!(payload.running, false);
         assert_eq!(&payload.values, &expected_combined_setup,);
@@ -710,7 +710,7 @@ mod tests {
             .clone();
         assert_eq!(record.target, AllExcept(1234));
         let (payload, context_id): (UiSetupBroadcast, u64) =
-            UiSetupBroadcast::fmb(record.body).unwrap();
+            UiSetupBroadcast::fmb(&record.body).unwrap();
         assert_eq!(context_id, 0);
         assert_eq!(payload.running, false);
         assert_eq!(&payload.values, &expected_combined_setup);
@@ -759,7 +759,7 @@ mod tests {
             .clone();
         assert_eq!(record.target, ClientId(1234));
         let (payload, context_id): (UiSetupResponse, u64) =
-            UiSetupResponse::fmb(record.body).unwrap();
+            UiSetupResponse::fmb(&record.body).unwrap();
         assert_eq!(context_id, 4321);
         assert_eq!(payload.running, false);
         let actual_pairs: Vec<(String, UiSetupResponseValue)> = payload
@@ -834,13 +834,13 @@ mod tests {
         let record = get_record(0);
         assert_eq!(record.target, ClientId(1234));
         let (payload, context_id): (UiSetupResponse, u64) =
-            UiSetupResponse::fmb(record.body).unwrap();
+            UiSetupResponse::fmb(&record.body).unwrap();
         assert_eq!(context_id, 4321);
         check_payload(payload.running, payload.values, payload.errors);
         let record = get_record(1);
         assert_eq!(record.target, ClientId(1234));
         let (payload, context_id): (UiSetupResponse, u64) =
-            UiSetupResponse::fmb(record.body).unwrap();
+            UiSetupResponse::fmb(&record.body).unwrap();
         assert_eq!(context_id, 4321);
         check_payload(payload.running, payload.values, payload.errors);
     }
@@ -1089,7 +1089,7 @@ mod tests {
             .clone();
         assert_eq!(record.target, ClientId(1234));
         let (payload, context_id): (UiStartResponse, u64) =
-            UiStartResponse::fmb(record.body).unwrap();
+            UiStartResponse::fmb(&record.body).unwrap();
         assert_eq!(context_id, 4321);
         assert_eq!(
             payload,
@@ -1198,17 +1198,17 @@ mod tests {
             .get_record::<NodeToUiMessage>(0)
             .clone();
         assert_eq!(record.target, ClientId(1234));
-        let (setup_response_before, _) = UiSetupResponse::fmb(record.body).unwrap();
+        let (setup_response_before, _) = UiSetupResponse::fmb(&record.body).unwrap();
         let record = ui_gateway_recording
             .get_record::<NodeToUiMessage>(1)
             .clone();
         assert_eq!(record.target, AllExcept(1234));
-        let (setup_broadcast_before, _) = UiSetupBroadcast::fmb(record.body).unwrap();
+        let (setup_broadcast_before, _) = UiSetupBroadcast::fmb(&record.body).unwrap();
         // skip start record (2)
         let record = ui_gateway_recording
             .get_record::<NodeToUiMessage>(3)
             .clone();
-        let (setup_after, _) = UiSetupResponse::fmb(record.body).unwrap();
+        let (setup_after, _) = UiSetupResponse::fmb(&record.body).unwrap();
         // ------
         assert_eq!(setup_after.values, setup_response_before.values);
         assert_eq!(setup_after.values, setup_broadcast_before.values);
@@ -1389,7 +1389,7 @@ mod tests {
             .clone();
         assert_eq!(record.target, ClientId(1234));
         assert_eq!(record.body.path, FireAndForget);
-        let (payload, context_id): (UiRedirect, u64) = UiRedirect::fmb(record.body).unwrap();
+        let (payload, context_id): (UiRedirect, u64) = UiRedirect::fmb(&record.body).unwrap();
         assert_eq!(context_id, 0);
         assert_eq!(
             payload,

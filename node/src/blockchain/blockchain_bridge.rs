@@ -137,7 +137,7 @@ impl Handler<NodeFromUiMessage> for BlockchainBridge {
     type Result = ();
 
     fn handle(&mut self, msg: NodeFromUiMessage, _ctx: &mut Self::Context) -> Self::Result {
-        if let Ok((crash_request, _)) = UiCrashRequest::fmb(msg.body) {
+        if let Ok((crash_request, _)) = UiCrashRequest::fmb(&msg.body) {
             handle_ui_crash_request(crash_request, &self.logger, self.crashable, CRASH_KEY)
         }
     }

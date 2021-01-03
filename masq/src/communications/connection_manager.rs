@@ -493,7 +493,7 @@ struct BroadcastHandleRedirect {
 
 impl BroadcastHandle for BroadcastHandleRedirect {
     fn send(&self, message_body: MessageBody) {
-        match UiRedirect::fmb(message_body.clone()) {
+        match UiRedirect::fmb(&message_body) {
             Ok((redirect, _)) => {
                 let context_id = redirect.context_id.unwrap_or(0);
                 self.redirect_order_tx
@@ -700,11 +700,11 @@ mod tests {
         thread::sleep(Duration::from_millis(1000));
         let mut outgoing_messages = stop_handle.stop();
         assert_eq!(
-            UiUnmarshalError::fmb(outgoing_messages.remove(0).unwrap()).unwrap(),
+            UiUnmarshalError::fmb(&outgoing_messages.remove(0).unwrap()).unwrap(),
             (message1, 0)
         );
         assert_eq!(
-            UiUnmarshalError::fmb(outgoing_messages.remove(0).unwrap()).unwrap(),
+            UiUnmarshalError::fmb(&outgoing_messages.remove(0).unwrap()).unwrap(),
             (message2, 0)
         );
         assert_eq!(outgoing_messages.is_empty(), true);
@@ -838,7 +838,7 @@ mod tests {
         let _ = join_handle.join();
         let mut broadcast_handle_send_params = broadcast_handle_send_params_arc.lock().unwrap();
         let message_body: MessageBody = (*broadcast_handle_send_params).remove(0);
-        let crash_broadcast = UiNodeCrashedBroadcast::fmb(message_body).unwrap().0;
+        let crash_broadcast = UiNodeCrashedBroadcast::fmb(&message_body).unwrap().0;
         assert_eq!(crash_broadcast.crash_reason, CrashReason::DaemonCrashed);
     }
 
@@ -1182,7 +1182,7 @@ mod tests {
 
         let request_body = node_stop_handle.stop()[0].clone().unwrap();
         assert_eq!(
-            UiFinancialsRequest::fmb(request_body).unwrap().0,
+            UiFinancialsRequest::fmb(&request_body).unwrap().0,
             UiFinancialsRequest {
                 payable_minimum_amount: 12,
                 payable_maximum_age: 23,
@@ -1190,7 +1190,7 @@ mod tests {
                 receivable_maximum_age: 45,
             }
         );
-        let (response, context_id) = UiFinancialsResponse::fmb(result).unwrap();
+        let (response, context_id) = UiFinancialsResponse::fmb(&result).unwrap();
         assert_eq!(
             response,
             UiFinancialsResponse {
@@ -1295,8 +1295,8 @@ mod tests {
 
         let mut outgoing_messages = stop_handle.stop();
         assert_eq!(
-            UiUnmarshalError::fmb(outgoing_messages.remove(0).unwrap()),
-            UiUnmarshalError::fmb(outgoing_message)
+            UiUnmarshalError::fmb(&outgoing_messages.remove(0).unwrap()),
+            UiUnmarshalError::fmb(&outgoing_message)
         );
     }
 

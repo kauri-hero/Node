@@ -644,7 +644,7 @@ impl Accountant {
     fn handle_node_from_ui_message(&mut self, msg: NodeFromUiMessage) {
         let client_id = msg.client_id;
         let result: Result<(UiFinancialsRequest, u64), UiMessageError> =
-            UiFinancialsRequest::fmb(msg.body);
+            UiFinancialsRequest::fmb(&msg.body);
         match result {
             Ok((payload, context_id)) => self.handle_financials(client_id, context_id, payload),
             Err(UnexpectedMessage(opcode, path)) => debug!(
