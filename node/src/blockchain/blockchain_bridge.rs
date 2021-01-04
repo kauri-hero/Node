@@ -139,6 +139,11 @@ impl Handler<NodeFromUiMessage> for BlockchainBridge {
     fn handle(&mut self, msg: NodeFromUiMessage, _ctx: &mut Self::Context) -> Self::Result {
         if let Ok((crash_request, _)) = UiCrashRequest::fmb(&msg.body) {
             handle_ui_crash_request(crash_request, &self.logger, self.crashable, CRASH_KEY)
+        } else {
+            debug!(
+                &self.logger,
+                "Ignoring message with opcode '{}' from client {}", msg.body.opcode, msg.client_id
+            )
         }
     }
 }
@@ -191,7 +196,7 @@ mod tests {
     use ethsign_crypto::Keccak256;
     use futures::future::Future;
     use masq_lib::crash_point::CrashPoint;
-    use masq_lib::messages::ToMessageBody;
+    use masq_lib::messages::{ToMessageBody, UiDescriptorRequest};
     use masq_lib::test_utils::utils::DEFAULT_CHAIN_ID;
     use rustc_hex::FromHex;
     use std::cell::RefCell;
@@ -659,6 +664,31 @@ mod tests {
 
         System::current().stop();
         system.run();
+    }
+
+    #[test]
+    fn unexpected_message_is_logged() {
+        init_test_logging();
+        let system = System::new("test");
+        let config = BootstrapperConfig::new();
+        let subject = BlockchainBridge::new(
+            &config,
+            Box::new(BlockchainInterfaceMock::default()),
+            Box::new(PersistentConfigurationMock::default()),
+        );
+        let addr: Addr<BlockchainBridge> = subject.start();
+
+        addr.try_send(NodeFromUiMessage {
+            client_id: 1234,
+            body: UiDescriptorRequest {}.tmb(4321),
+        })
+        .unwrap();
+
+        System::current().stop();
+        system.run();
+        TestLogHandler::new().exists_log_containing(
+            "DEBUG: BlockchainBridge: Ignoring message with opcode 'descriptor' from client 1234",
+        );
     }
 
     fn bc_from_wallet(consuming_wallet: Option<Wallet>) -> BootstrapperConfig {

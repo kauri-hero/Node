@@ -37,8 +37,7 @@ use actix::Recipient;
 use futures::future::Future;
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use masq_lib::messages::UiMessageError::UnexpectedMessage;
-use masq_lib::messages::{FromMessageBody, ToMessageBody, UiFinancialsRequest, UiMessageError};
+use masq_lib::messages::{FromMessageBody, ToMessageBody, UiFinancialsRequest};
 use masq_lib::messages::{UiFinancialsResponse, UiPayableAccount, UiReceivableAccount};
 use masq_lib::ui_gateway::MessageTarget::ClientId;
 use masq_lib::ui_gateway::{NodeFromUiMessage, NodeToUiMessage};
@@ -642,16 +641,13 @@ impl Accountant {
     }
 
     fn handle_node_from_ui_message(&mut self, msg: NodeFromUiMessage) {
-        let client_id = msg.client_id;
-        let result: Result<(UiFinancialsRequest, u64), UiMessageError> =
-            UiFinancialsRequest::fmb(&msg.body);
-        match result {
-            Ok((payload, context_id)) => self.handle_financials(client_id, context_id, payload),
-            Err(UnexpectedMessage(opcode, path)) => debug!(
+        if let Ok((ufr, context_id)) = UiFinancialsRequest::fmb(&msg.body) {
+            self.handle_financials(msg.client_id, context_id, ufr);
+        } else {
+            debug!(
                 &self.logger,
-                "Ignoring {:?} request from client {} with opcode '{}'", path, client_id, opcode
-            ),
-            Err(e) => panic!("Received obsolete error: {:?}", e),
+                "Ignoring message with opcode '{}' from client {}", msg.body.opcode, msg.client_id
+            )
         }
     }
 
@@ -1344,7 +1340,7 @@ pub mod tests {
     }
 
     #[test]
-    fn unexpected_ui_message_is_ignored() {
+    fn unexpected_ui_message_is_ignored_and_logged() {
         init_test_logging();
         let system = System::new("test");
         let subject = make_subject(
@@ -1381,7 +1377,7 @@ pub mod tests {
         let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
         assert_eq!(ui_gateway_recording.len(), 0);
         TestLogHandler::new().exists_log_containing(
-            "DEBUG: Accountant: Ignoring FireAndForget request from client 1234 with opcode 'farple-prang'",
+            "DEBUG: Accountant: Ignoring message with opcode 'farple-prang' from client 1234",
         );
     }
 

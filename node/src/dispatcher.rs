@@ -119,6 +119,11 @@ impl Handler<NodeFromUiMessage> for Dispatcher {
             handle_ui_crash_request(crash_request, &self.logger, self.crashable, CRASH_KEY);
         } else if let Ok((_, context_id)) = UiDescriptorRequest::fmb(&msg.body) {
             self.handle_descriptor_request(msg.client_id, context_id);
+        } else {
+            debug!(
+                &self.logger,
+                "Ignoring message with opcode '{}' from client {}", msg.body.opcode, msg.client_id
+            )
         }
     }
 }
@@ -179,12 +184,13 @@ mod tests {
     use crate::node_test_utils::make_stream_handler_pool_subs_from;
     use crate::stream_messages::NonClandestineAttributes;
     use crate::sub_lib::dispatcher::Endpoint;
+    use crate::test_utils::logging::{init_test_logging, TestLogHandler};
     use crate::test_utils::recorder::Recorder;
     use crate::test_utils::recorder::{make_recorder, peer_actors_builder};
     use actix::Addr;
     use actix::System;
     use masq_lib::constants::HTTP_PORT;
-    use masq_lib::messages::{ToMessageBody, UiDescriptorResponse};
+    use masq_lib::messages::{ToMessageBody, UiCheckPasswordRequest, UiDescriptorResponse};
     use masq_lib::ui_gateway::MessageTarget;
     use std::net::SocketAddr;
     use std::str::FromStr;
@@ -481,6 +487,36 @@ mod tests {
                 }
                 .tmb(4321)
             }
+        );
+    }
+
+    #[test]
+    fn unexpected_messages_are_logged_and_ignored() {
+        init_test_logging();
+        let system = System::new("test");
+        let subject = Dispatcher::new(CrashPoint::None, "Node descriptor".to_string());
+        let addr = subject.start();
+        let (ui_gateway_recorder, _, ui_gateway_recording_arc) = make_recorder();
+        let peer_actors = peer_actors_builder()
+            .ui_gateway(ui_gateway_recorder)
+            .build();
+        addr.try_send(BindMessage { peer_actors }).unwrap();
+        let msg = NodeFromUiMessage {
+            client_id: 1234,
+            body: UiCheckPasswordRequest {
+                db_password_opt: None,
+            }
+            .tmb(4321),
+        };
+
+        addr.try_send(msg).unwrap();
+
+        System::current().stop_with_code(0);
+        system.run();
+        let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
+        assert_eq!(ui_gateway_recording.len(), 0);
+        TestLogHandler::new().exists_log_containing(
+            "DEBUG: Dispatcher: Ignoring message with opcode 'checkPassword' from client 1234",
         );
     }
 }

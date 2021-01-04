@@ -84,6 +84,11 @@ impl Handler<NodeFromUiMessage> for Configurator {
                 "Sending response to generateWallets command:\n{:?}", response
             );
             self.send_to_ui_gateway(ClientId(msg.client_id), response);
+        } else {
+            debug!(
+                &self.logger,
+                "Ignoring message with opcode '{}' from client {}", msg.body.opcode, msg.client_id
+            )
         }
     }
 }
@@ -392,7 +397,8 @@ mod tests {
     }
 
     #[test]
-    fn ignores_unexpected_message() {
+    fn logs_and_ignores_unexpected_message() {
+        init_test_logging();
         let system = System::new("test");
         let subject = make_subject(None);
         let subject_addr = subject.start();
@@ -411,6 +417,8 @@ mod tests {
         system.run();
         let recording = ui_gateway_recording.lock().unwrap();
         assert_eq!(recording.len(), 0);
+        TestLogHandler::new()
+            .exists_log_containing("DEBUG: Configurator: Ignoring message with opcode 'start'");
     }
 
     #[test]

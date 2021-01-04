@@ -275,6 +275,11 @@ impl Handler<NodeFromUiMessage> for Neighborhood {
         let client_id = msg.client_id;
         if let Ok((body, _)) = UiShutdownRequest::fmb(&msg.body) {
             self.handle_shutdown_order(client_id, body);
+        } else {
+            debug!(
+                &self.logger,
+                "Ignoring message with opcode '{}' from client {}", msg.body.opcode, msg.client_id
+            )
         }
     }
 }
@@ -1264,6 +1269,7 @@ mod tests {
     use actix::System;
     use itertools::Itertools;
     use masq_lib::constants::TLS_PORT;
+    use masq_lib::messages::{ToMessageBody, UiDescriptorRequest};
     use masq_lib::test_utils::utils::{
         ensure_node_home_directory_exists, DEFAULT_CHAIN_ID, TEST_DEFAULT_CHAIN_NAME,
     };
@@ -4182,6 +4188,37 @@ mod tests {
         assert_eq!(ui_gateway_recording.len(), 0);
         TestLogHandler::new()
             .exists_log_containing("INFO: Neighborhood: Received shutdown order from client 1234");
+    }
+
+    #[test]
+    fn unexpected_ui_message_is_logged() {
+        init_test_logging();
+        let system = System::new("test");
+        let subject = Neighborhood::new(
+            main_cryptde(),
+            &bc_from_nc_plus(
+                NeighborhoodConfig {
+                    mode: NeighborhoodMode::ZeroHop,
+                },
+                make_wallet("earning"),
+                None,
+                "unexpected_ui_message_is_logged_and_ignored",
+            ),
+        );
+        let subject_addr = subject.start();
+
+        subject_addr
+            .try_send(NodeFromUiMessage {
+                client_id: 1234,
+                body: UiDescriptorRequest {}.tmb(4321),
+            })
+            .unwrap();
+
+        System::current().stop();
+        system.run();
+        TestLogHandler::new().exists_log_containing(
+            "DEBUG: Neighborhood: Ignoring message with opcode 'descriptor' from client 1234",
+        );
     }
 
     #[test]
