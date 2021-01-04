@@ -30,7 +30,7 @@ impl ChangePasswordCommand {
                 }),
                 Err(e) => Err(format!("{}", e)),
             },
-            2 => match set_password_subcommand().get_matches_from_safe(pieces) {
+            2 if pieces[0]=="set-password" => match set_password_subcommand().get_matches_from_safe(pieces) {
                 Ok(matches) => Ok(Self {
                     old_password: None,
                     new_password: matches
@@ -104,7 +104,7 @@ pub fn set_password_subcommand() -> App<'static, 'static> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::command_factory::{CommandFactory, CommandFactoryReal};
+    use crate::command_factory::{CommandFactory, CommandFactoryReal, CommandFactoryError};
     use crate::test_utils::mocks::CommandContextMock;
     use masq_lib::messages::{ToMessageBody, UiChangePasswordRequest, UiChangePasswordResponse};
     use std::sync::{Arc, Mutex};
@@ -199,6 +199,23 @@ mod tests {
                 1000
             )]
         )
+    }
+
+    #[test]
+    fn change_password_command_fails_if_only_one_argument_supplied() {
+        let factory = CommandFactoryReal::new();
+
+        let result = factory
+            .make(vec![
+                "change-password".to_string(),
+                "abracadabra".to_string(),
+            ]);
+
+        let error_boom_gate:Result<(),CommandFactoryError> = match result{
+            Ok(_) => Err(CommandFactoryError::CommandSyntax("bzzzzzzzzzzzzzzzzzzzzzzz".to_string())),
+            Err(e) => Err(e)
+        };
+        assert_eq!(error_boom_gate,Err(CommandFactoryError::CommandSyntax("change-password: Invalid number of arguments".to_string())));
     }
 
     #[test]
