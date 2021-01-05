@@ -19,7 +19,7 @@ impl ChangePasswordCommand {
                 old_password: None,
                 new_password: matches
                     .value_of("new-db-password")
-                    .expect("change-password: Clipy: internal error")
+                    .expect("new-db-password is not properly required")
                     .to_string(),
             }),
             Err(e) => Err(format!("{}", e)),
@@ -32,12 +32,12 @@ impl ChangePasswordCommand {
                 old_password: Some(
                     matches
                         .value_of("old-db-password")
-                        .expect("change password: Clipy: internal error")
+                        .expect("old-db-password is not properly required")
                         .to_string(),
                 ),
                 new_password: matches
                     .value_of("new-db-password")
-                    .expect("change password: Clipy: internal error")
+                    .expect("new-db-password is not properly required")
                     .to_string(),
             }),
             Err(e) => Err(format!("{}", e)),
@@ -235,6 +235,27 @@ mod tests {
                 1000
             )]
         )
+    }
+
+    #[test]
+    fn change_password_command_fails_if_only_one_argument_supplied() {
+        let factory = CommandFactoryReal::new();
+
+        let result = factory.make(vec![
+            "change-password".to_string(),
+            "abracadabra".to_string(),
+        ]);
+
+        let msg = match result {
+            Err(CommandFactoryError::CommandSyntax(s)) => s,
+            x => panic!("Expected CommandSyntax error, found {:?}", x),
+        };
+        assert_eq!(
+            msg.contains("The following required arguments were not provided"),
+            true,
+            "{}",
+            msg
+        );
     }
 
     #[test]
