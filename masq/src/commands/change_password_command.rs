@@ -13,35 +13,34 @@ pub struct ChangePasswordCommand {
 }
 
 impl ChangePasswordCommand {
-    pub(crate) fn new(pieces: Vec<String>) -> Result<Self, String> {
-        match pieces.len() {
-            3 => match change_password_subcommand().get_matches_from_safe(pieces) {
-                Ok(matches) => Ok(Self {
-                    old_password: Some(
-                        matches
-                            .value_of("old-db-password")
-                            .expect("change password: Clipy: internal error")
-                            .to_string(),
-                    ),
-                    new_password: matches
-                        .value_of("new-db-password")
+    pub(crate) fn new_set(pieces: Vec<String>) -> Result<Self, String> {
+        match set_password_subcommand().get_matches_from_safe(pieces) {
+            Ok(matches) => Ok(Self {
+                old_password: None,
+                new_password: matches
+                    .value_of("new-db-password")
+                    .expect("change-password: Clipy: internal error")
+                    .to_string(),
+            }),
+            Err(e) => Err(format!("{}", e)),
+        }
+    }
+
+    pub(crate) fn new_change(pieces: Vec<String>) -> Result<Self, String> {
+        match change_password_subcommand().get_matches_from_safe(pieces) {
+            Ok(matches) => Ok(Self {
+                old_password: Some(
+                    matches
+                        .value_of("old-db-password")
                         .expect("change password: Clipy: internal error")
                         .to_string(),
-                }),
-                Err(e) => Err(format!("{}", e)),
-            },
-            2 => match set_password_subcommand().get_matches_from_safe(pieces) {
-                Ok(matches) => Ok(Self {
-                    old_password: None,
-                    new_password: matches
-                        .value_of("new-db-password")
-                        .expect("change-password: Clipy: internal error")
-                        .to_string(),
-                }),
-                Err(e) => Err(format!("{}", e)),
-            },
-
-            _ => Err("change-password: Invalid number of arguments".to_string()),
+                ),
+                new_password: matches
+                    .value_of("new-db-password")
+                    .expect("change password: Clipy: internal error")
+                    .to_string(),
+            }),
+            Err(e) => Err(format!("{}", e)),
         }
     }
 
@@ -104,17 +103,17 @@ pub fn set_password_subcommand() -> App<'static, 'static> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::command_factory::{CommandFactory, CommandFactoryReal};
+    use crate::command_factory::{CommandFactory, CommandFactoryError, CommandFactoryReal};
     use crate::test_utils::mocks::CommandContextMock;
     use masq_lib::messages::{ToMessageBody, UiChangePasswordRequest, UiChangePasswordResponse};
     use std::sync::{Arc, Mutex};
 
     #[test]
-    fn testing_command_factory_here() {
-        let factory = CommandFactoryReal::new();
+    fn factory_produces_change_password() {
+        let subject = CommandFactoryReal::new();
         let mut context =
             CommandContextMock::new().transact_result(Ok(UiChangePasswordResponse {}.tmb(1230)));
-        let subject = factory
+        let command = subject
             .make(vec![
                 "change-password".to_string(),
                 "abracadabra".to_string(),
@@ -122,9 +121,46 @@ mod tests {
             ])
             .unwrap();
 
-        let result = subject.execute(&mut context);
+        let result = command.execute(&mut context);
 
         assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn factory_produces_set_password() {
+        let subject = CommandFactoryReal::new();
+        let mut context =
+            CommandContextMock::new().transact_result(Ok(UiChangePasswordResponse {}.tmb(1230)));
+        let command = subject
+            .make(vec!["set-password".to_string(), "abracadabra".to_string()])
+            .unwrap();
+
+        let result = command.execute(&mut context);
+
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn factory_complains_about_change_password_with_one_parameter() {
+        let subject = CommandFactoryReal::new();
+        let result = subject
+            .make(vec![
+                "change-password".to_string(),
+                "abracadabra".to_string(),
+            ])
+            .err()
+            .unwrap();
+
+        let err = match result {
+            CommandFactoryError::CommandSyntax(s) => s,
+            x => panic!("Expected CommandSyntax error; got {:?}", x),
+        };
+        assert_eq!(
+            err.contains("The following required arguments were not provided"),
+            true,
+            "{}",
+            err
+        );
     }
 
     #[test]
@@ -202,12 +238,34 @@ mod tests {
     }
 
     #[test]
-    fn change_password_new_handles_error_of_missing_both_arguments() {
-        let result = ChangePasswordCommand::new(vec!["change-password".to_string()]);
+    fn change_password_new_set_handles_error_of_missing_both_arguments() {
+        let result = ChangePasswordCommand::new_set(vec!["set-password".to_string()]);
 
+        let msg = match result {
+            Err(s) => s,
+            x => panic!("Expected string, found {:?}", x),
+        };
         assert_eq!(
-            result,
-            Err("change-password: Invalid number of arguments".to_string())
-        )
+            msg.contains("The following required arguments were not provided"),
+            true,
+            "{}",
+            msg
+        );
+    }
+
+    #[test]
+    fn change_password_new_change_handles_error_of_missing_both_arguments() {
+        let result = ChangePasswordCommand::new_change(vec!["change-password".to_string()]);
+
+        let msg = match result {
+            Err(s) => s,
+            x => panic!("Expected string, found {:?}", x),
+        };
+        assert_eq!(
+            msg.contains("The following required arguments were not provided"),
+            true,
+            "{}",
+            msg
+        );
     }
 }
