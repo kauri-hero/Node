@@ -6,11 +6,11 @@ use masq_cli_lib::command_processor::{
     CommandProcessor, CommandProcessorFactory, CommandProcessorFactoryReal,
 };
 use masq_cli_lib::communications::broadcast_handler::StreamFactoryReal;
+use masq_cli_lib::utils::{BufReadFactory, BufReadFactoryReal};
 use masq_lib::command;
 use masq_lib::command::{Command, StdStreams};
 use std::io;
-use std::io::{BufRead};
-use masq_cli_lib::utils::{BufReadFactory, BufReadFactoryReal};
+use std::io::BufRead;
 
 fn main() {
     let mut streams: StdStreams<'_> = StdStreams {
@@ -63,7 +63,7 @@ impl Main {
         Self {
             command_factory: Box::new(CommandFactoryReal::new()),
             processor_factory: Box::new(CommandProcessorFactoryReal {}),
-            buf_read_factory: Box::new(BufReadFactoryReal::new ())
+            buf_read_factory: Box::new(BufReadFactoryReal::new()),
         }
     }
 
@@ -120,8 +120,6 @@ impl Main {
     ) -> u8 {
         let mut line_reader = self.buf_read_factory.make_interactive();
         loop {
-            write!(streams.stdout, "masq> ").expect("write! failed");
-            streams.stdout.flush().expect("flush failed");
             let args = match Self::accept_subcommand(&mut line_reader) {
                 Ok(Some(args)) => args,
                 Ok(None) => break,
@@ -186,22 +184,21 @@ mod tests {
     use masq_lib::messages::ToMessageBody;
     use masq_lib::messages::UiShutdownRequest;
     use masq_lib::test_utils::fake_stream_holder::{ByteArrayReader, FakeStreamHolder};
+    use std::cell::RefCell;
     use std::io::ErrorKind;
     use std::sync::{Arc, Mutex};
-    use std::cell::RefCell;
 
     struct BufReadFactoryMock {
         interactive: RefCell<Option<ByteArrayReader>>,
-        non_interactive: RefCell<Option<ByteArrayReader>>,
     }
 
     impl BufReadFactory for BufReadFactoryMock {
         fn make_interactive(&self) -> Box<dyn BufRead> {
-            Box::new (self.interactive.borrow_mut().take().unwrap())
+            Box::new(self.interactive.borrow_mut().take().unwrap())
         }
 
         fn make_non_interactive(&self) -> Box<dyn BufRead> {
-            Box::new (self.non_interactive.borrow_mut().take().unwrap())
+            unimplemented!()
         }
     }
 
@@ -209,17 +206,15 @@ mod tests {
         pub fn new() -> BufReadFactoryMock {
             BufReadFactoryMock {
                 interactive: RefCell::new(None),
-                non_interactive: RefCell::new(None)
             }
         }
 
-        pub fn make_interactive_result (self, result: ByteArrayReader) -> BufReadFactoryMock {
-            self.interactive.borrow_mut().replace (result);
-            self
+        pub fn make_interactive_result(self, input: &str) -> BufReadFactoryMock {
+            self.make_interactive_reader (ByteArrayReader::new (input.as_bytes()))
         }
 
-        pub fn make_non_interactive_result (self, result: ByteArrayReader) -> BufReadFactoryMock {
-            self.non_interactive.borrow_mut().replace (result);
+        pub fn make_interactive_reader(self, reader: ByteArrayReader) -> BufReadFactoryMock {
+            self.interactive.borrow_mut().replace(reader);
             self
         }
     }
@@ -350,10 +345,9 @@ mod tests {
         let mut subject = Main {
             command_factory: Box::new(command_factory),
             processor_factory: Box::new(processor_factory),
-            buf_read_factory: Box::new(BufReadFactoryMock::new()),
+            buf_read_factory: Box::new(BufReadFactoryMock::new().make_interactive_result ("setup\nstart\nexit\n")),
         };
         let mut stream_holder = FakeStreamHolder::new();
-        stream_holder.stdin = ByteArrayReader::new(b"setup\nstart\nexit\n");
 
         let result = subject.go(
             &mut stream_holder.streams(),
@@ -379,15 +373,17 @@ mod tests {
         let processor = CommandProcessorMock::new().close_params(&close_params_arc);
         let processor_factory =
             CommandProcessorFactoryMock::new().make_result(Ok(Box::new(processor)));
+        let buf_read_factory = BufReadFactoryMock::new()
+            .make_interactive_reader (
+                ByteArrayReader::new(&[0; 0])
+                    .reject_next_read(std::io::Error::from(ErrorKind::ConnectionRefused))
+            );
         let mut subject = Main {
             command_factory: Box::new(command_factory),
             processor_factory: Box::new(processor_factory),
-            buf_read_factory: Box::new(BufReadFactoryMock::new()),
+            buf_read_factory: Box::new (buf_read_factory),
         };
         let mut stream_holder = FakeStreamHolder::new();
-        stream_holder
-            .stdin
-            .reject_next_read(std::io::Error::from(ErrorKind::ConnectionRefused));
 
         let result = subject.go(&mut stream_holder.streams(), &["command".to_string()]);
 
@@ -407,13 +403,14 @@ mod tests {
         let processor = CommandProcessorMock::new().close_params(&close_params_arc);
         let processor_factory =
             CommandProcessorFactoryMock::new().make_result(Ok(Box::new(processor)));
+        let buf_read_factory = BufReadFactoryMock::new ()
+            .make_interactive_result("");
         let mut subject = Main {
             command_factory: Box::new(command_factory),
             processor_factory: Box::new(processor_factory),
-            buf_read_factory: Box::new(BufReadFactoryMock::new()),
+            buf_read_factory: Box::new (buf_read_factory),
         };
         let mut stream_holder = FakeStreamHolder::new();
-        stream_holder.stdin = ByteArrayReader::new(b"");
 
         let result = subject.go(&mut stream_holder.streams(), &["command".to_string()]);
 
@@ -432,11 +429,11 @@ mod tests {
         let processor_factory =
             CommandProcessorFactoryMock::new().make_result(Ok(Box::new(processor)));
         let buf_read_factory = BufReadFactoryMock::new()
-            .make_interactive_result(ByteArrayReader::new(b"\nsetup\nexit\n"));
+            .make_interactive_result("\nsetup\nexit\n");
         let mut subject = Main {
             command_factory: Box::new(command_factory),
             processor_factory: Box::new(processor_factory),
-            buf_read_factory: Box::new(BufReadFactoryMock::new()),
+            buf_read_factory: Box::new(buf_read_factory),
         };
         let mut stream_holder = FakeStreamHolder::new();
 
@@ -461,10 +458,9 @@ mod tests {
         let mut subject = Main {
             command_factory: Box::new(command_factory),
             processor_factory: Box::new(processor_factory),
-            buf_read_factory: Box::new(BufReadFactoryMock::new()),
+            buf_read_factory: Box::new(BufReadFactoryMock::new().make_interactive_result("error command\nexit\n")),
         };
         let mut stream_holder = FakeStreamHolder::new();
-        stream_holder.stdin = ByteArrayReader::new(b"error command\nexit\n");
 
         let result = subject.go(&mut stream_holder.streams(), &["command".to_string()]);
 
@@ -494,10 +490,9 @@ mod tests {
         let mut subject = Main {
             command_factory: Box::new(command_factory),
             processor_factory: Box::new(processor_factory),
-            buf_read_factory: Box::new(BufReadFactoryMock::new()),
+            buf_read_factory: Box::new(BufReadFactoryMock::new().make_interactive_result("error command\nexit\n")),
         };
         let mut stream_holder = FakeStreamHolder::new();
-        stream_holder.stdin = ByteArrayReader::new(b"error command\nexit\n");
 
         let result = subject.go(&mut stream_holder.streams(), &["command".to_string()]);
 
