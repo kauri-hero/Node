@@ -37,6 +37,12 @@ impl BufRead for LineReader {
     }
 }
 
+impl Default for LineReader {
+    fn default() -> Self {
+        LineReader::new()
+    }
+}
+
 impl LineReader {
     pub fn new() -> LineReader {
         LineReader {

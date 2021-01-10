@@ -118,9 +118,7 @@ impl BufRead for ByteArrayReader {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         match self.next_error.take() {
             Some(error) => Err(error),
-            None => {
-                Ok(&self.byte_array[self.position..])
-            }
+            None => Ok(&self.byte_array[self.position..]),
         }
     }
 
