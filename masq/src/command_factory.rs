@@ -9,6 +9,7 @@ use crate::commands::crash_command::CrashCommand;
 use crate::commands::descriptor_command::DescriptorCommand;
 use crate::commands::generate_wallets_command::GenerateWalletsCommand;
 use crate::commands::recover_wallets_command::RecoverWalletsCommand;
+use crate::commands::set_configuration::SetConfigurationCommand;
 use crate::commands::setup_command::SetupCommand;
 use crate::commands::shutdown_command::ShutdownCommand;
 use crate::commands::start_command::StartCommand;
@@ -52,6 +53,10 @@ impl CommandFactory for CommandFactoryReal {
                 Err(msg) => return Err(CommandSyntax(msg)),
             },
             "recover-wallets" => match RecoverWalletsCommand::new(pieces) {
+                Ok(command) => Box::new(command),
+                Err(msg) => return Err(CommandSyntax(msg)),
+            },
+            "set-configuration" => match SetConfigurationCommand::new(pieces) {
                 Ok(command) => Box::new(command),
                 Err(msg) => return Err(CommandSyntax(msg)),
             },
@@ -204,6 +209,78 @@ mod tests {
                 old_password: None,
                 new_password: "abracadabra".to_string()
             }
+        );
+    }
+
+    #[test]
+    fn factory_produces_set_configuration() {
+        let subject = CommandFactoryReal::new();
+
+        let command = subject
+            .make(vec![
+                "set-configuration".to_string(),
+                "--gas-price".to_string(),
+                "20".to_string(),
+            ])
+            .unwrap();
+
+        assert_eq!(
+            command
+                .as_any()
+                .downcast_ref::<SetConfigurationCommand>()
+                .unwrap(),
+            &SetConfigurationCommand {
+                gas_price_opt: Some(20),
+                start_block_opt: None
+            }
+        );
+    }
+
+    #[test]
+    fn complains_about_set_configuration_command_with_bad_syntax() {
+        let subject = CommandFactoryReal::new();
+
+        let result = subject
+            .make(vec![
+                "set-configuration".to_string(),
+                "gas-price".to_string(),
+                "blah".to_string(),
+            ])
+            .err()
+            .unwrap();
+
+        let msg = match result {
+            CommandSyntax(msg) => msg,
+            x => panic!("Expected syntax error, got {:?}", x),
+        };
+        assert_eq!(msg.contains("Found argument '"), true, "{}", msg);
+        assert_eq!(msg.contains("gas-price"), true, "{}", msg);
+        assert_eq!(
+            msg.contains("which wasn't expected, or isn't valid in this context"),
+            true,
+            "{}",
+            msg
+        );
+    }
+
+    #[test]
+    fn complains_about_set_configuration_command_with_no_parameters() {
+        let subject = CommandFactoryReal::new();
+
+        let result = subject
+            .make(vec!["set-configuration".to_string()])
+            .err()
+            .unwrap();
+
+        let msg = match result {
+            CommandSyntax(msg) => msg,
+            x => panic!("Expected syntax error, got {:?}", x),
+        };
+        assert_eq!(
+            msg.contains("This command is not supported without arguments"),
+            true,
+            "{}",
+            msg
         );
     }
 

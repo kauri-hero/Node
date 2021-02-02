@@ -580,6 +580,23 @@ pub struct UiRecoverWalletsResponse {}
 conversation_message!(UiRecoverWalletsResponse, "recoverWallet");
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct UiSetConfigurationBroadcast {}
+fire_and_forget_message!(UiSetConfigurationBroadcast, "setConfiguration");
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct UiSetConfigurationRequest {
+    #[serde(rename = "gasPriceOpt")]
+    pub gas_price_opt: Option<u16>,
+    #[serde(rename = "startBlockOpt")]
+    pub start_block_opt: Option<u32>,
+}
+conversation_message!(UiSetConfigurationRequest, "setConfiguration");
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct UiSetConfigurationResponse {}
+conversation_message!(UiSetConfigurationResponse, "setConfiguration");
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct UiShutdownRequest {}
 conversation_message!(UiShutdownRequest, "shutdown");
 
