@@ -565,20 +565,9 @@ impl Configurator {
         msg: UiSetConfigurationRequest,
         context_id: u64,
     ) -> MessageBody {
-        Self::unfriendly_set_configuration(msg, context_id, &mut self.persistent_config)
-    }
-
-
-
-  //  #[allow(unused_must_use)]      could be solved better ?
-    fn unfriendly_set_configuration(
-        msg: UiSetConfigurationRequest,
-        context_id: u64,
-        persistent_config: &mut Box<dyn PersistentConfiguration>,
-    ) ->MessageBody {
         let mut data_collector: Vec<Result<Option<String>, String>> = vec![];
 
-        Self::stop_when_first_failure(msg,persistent_config,&mut data_collector);
+        Self::stop_when_first_failure(msg,&mut self.persistent_config,&mut data_collector);
 
         let (successes, failures): (Vec<_>, Vec<_>) = data_collector
             .into_iter()
@@ -595,16 +584,10 @@ impl Configurator {
             .into_iter()
             .map(|i| i.expect_err("Fake Err()"))
             .collect();
-      // let no_failures = failures.is_empty();
-      // let response =
-      UiSetConfigurationResponse {
-          successes,
-          failures,
-      }.tmb(context_id)
-        // if no_failures{
-        // Ok(response)
-        // } else
-        // {Err(response)}
+        UiSetConfigurationResponse {
+            successes,
+            failures,
+        }.tmb(context_id)
     }
 
     fn parameter_to_be_processed<T, F>(
@@ -1690,20 +1673,20 @@ mod tests {
     }
 
     #[test]
-    fn handle_set_configuration_works_with_voids() {
-        let persistent_config = PersistentConfigurationMock::new().set_start_block_result(Ok(()));
-        let mut subject = make_subject(Some(persistent_config));
+fn handle_set_configuration_works_with_voids() {
+    let persistent_config = PersistentConfigurationMock::new().set_start_block_result(Ok(()));
+    let mut subject = make_subject(Some(persistent_config));
 
-        let result = subject.handle_set_configuration(UiSetConfigurationRequest {
-            gas_price_opt: None,
-            start_block_opt: Some(1233333)},4000);
+    let result = subject.handle_set_configuration(UiSetConfigurationRequest {
+        gas_price_opt: None,
+        start_block_opt: Some(1233333)},4000);
 
-        assert_eq!(result, MessageBody {
-                opcode: "setConfiguration".to_string(),
-                path: MessagePath::Conversation(4000),
-                payload: Ok(r#"{"successes":["start-block"],"failures":[]}"#.to_string()
-                )});
-    }
+    assert_eq!(result, MessageBody {
+        opcode: "setConfiguration".to_string(),
+        path: MessagePath::Conversation(4000),
+        payload: Ok(r#"{"successes":["start-block"],"failures":[]}"#.to_string()
+        )});
+}
 
     #[test]
     fn handle_set_configuration_handles_failure_and_collect_success() {
