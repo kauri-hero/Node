@@ -29,7 +29,6 @@ use crate::sub_lib::peer_actors::BindMessage;
 use crate::sub_lib::wallet::{Wallet, WalletError};
 use crate::test_utils::main_cryptde;
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
-use itertools::Itertools;
 use rustc_hex::ToHex;
 use std::str::FromStr;
 
@@ -566,58 +565,46 @@ impl Configurator {
         msg: UiSetConfigurationRequest,
         context_id: u64,
     ) -> MessageBody {
-        match Self::unfriendly_set_configuration(msg, context_id, &mut self.persistent_config) {
-            Ok(message_body) => message_body,
-            Err((code, msg)) => unimplemented!(), /* MessageBody {
-                                                      opcode: "configuration".to_string(),
-                                                      path: MessagePath::Conversation(context_id),
-                                                      payload: Err((code, msg)),
-                                                  },
-                                                  */
-        }
+        Self::unfriendly_set_configuration(msg, context_id, &mut self.persistent_config)
     }
 
+
+
+  //  #[allow(unused_must_use)]      could be solved better ?
     fn unfriendly_set_configuration(
         msg: UiSetConfigurationRequest,
         context_id: u64,
         persistent_config: &mut Box<dyn PersistentConfiguration>,
-    ) -> Result<MessageBody, MessageError> {
+    ) ->MessageBody {
         let mut data_collector: Vec<Result<Option<String>, String>> = vec![];
-        Self::parameter_to_be_processed(
-            msg.gas_price_opt,
-            Self::set_gas_price,
-            persistent_config,
-            &mut data_collector,
-        );
-        Self::parameter_to_be_processed(
-            msg.start_block_opt,
-            Self::set_start_block,
-            persistent_config,
-            &mut data_collector,
-        );
 
-        //place for adding future functionalities
+        Self::stop_when_first_failure(msg,persistent_config,&mut data_collector);
 
-        let (mut successes, mut failures): (Vec<_>, Vec<_>) = data_collector
-            .into_iter()
-            .take_while(|i| i.as_ref().unwrap_or(&Some("".to_string())).is_some())
-            .into_iter()
-            .map(|i| i.map(|inner| inner.expect("Fake Some()")))
+        let (successes, failures): (Vec<_>, Vec<_>) = data_collector
             .into_iter()
             .partition(|i| i.is_ok());
         let successes = successes
             .into_iter()
             .map(|i| i.expect("Fake Ok()"))
-            .collect();
-        let failures = failures
             .into_iter()
-            .map(|i| i.expect_err("Fake Ok()"))
+            .skip_while(|i| i.is_none())
+            .into_iter()
+            .map(|i| i.expect("Fake Some()"))
             .collect();
-        Ok((UiSetConfigurationResponse {
-            successes,
-            failures,
-        })
-        .tmb(context_id))
+        let failures:Vec<_> = failures
+            .into_iter()
+            .map(|i| i.expect_err("Fake Err()"))
+            .collect();
+      // let no_failures = failures.is_empty();
+      // let response =
+      UiSetConfigurationResponse {
+          successes,
+          failures,
+      }.tmb(context_id)
+        // if no_failures{
+        // Ok(response)
+        // } else
+        // {Err(response)}
     }
 
     fn parameter_to_be_processed<T, F>(
@@ -625,18 +612,42 @@ impl Configurator {
         f: F,
         config: &mut Box<dyn PersistentConfiguration>,
         collector: &mut Vec<Result<Option<String>, String>>,
-    ) where
+    )-> Result<(),()>
+        where
         F: FnOnce(T, &mut Box<dyn PersistentConfiguration>) -> Result<String, String>,
     {
         let result = if let Some(value) = parameter {
             match f(value, config) {
                 Ok(str) => Ok(Some(str)),
-                Err(str) => Err(str),
+                Err(str) => {collector.push(Err(str)); return Err(())
+                }
             }
         } else {
             Ok(None)
         };
-        collector.push(result)
+        collector.push(result);
+        Ok(())
+    }
+
+    fn stop_when_first_failure(msg: UiSetConfigurationRequest,
+        persistent_config: &mut Box<dyn PersistentConfiguration>,
+        data_collector: &mut Vec<Result<Option<String>, String>>)->Result<(),()>{
+        Self::parameter_to_be_processed(
+            msg.gas_price_opt,
+            Self::set_gas_price,
+            persistent_config,
+            data_collector,
+        )?;
+        Self::parameter_to_be_processed(
+            msg.start_block_opt,
+            Self::set_start_block,
+            persistent_config,
+            data_collector,
+        )?;
+
+        //place for adding future functionalities
+
+        Ok(())
     }
 
     fn set_gas_price(
@@ -645,7 +656,7 @@ impl Configurator {
     ) -> Result<String, String> {
         match config.set_gas_price(price_value) {
             Ok(_) => Ok("gas-price".to_string()),
-            Err(e) => unimplemented!(), // Err(format!("{:?}", e))
+            Err(e) => Err(format!("gas-price: {:?}", e))
         }
     }
 
@@ -655,7 +666,7 @@ impl Configurator {
     ) -> Result<String, String> {
         match config.set_start_block(block_number) {
             Ok(_) => Ok("start-block".to_string()),
-            Err(e) => unimplemented!(), // Err(format!("{:?}", e))
+            Err(e) => Err(format!("start-block: {:?}", e))
         }
     }
 
@@ -1632,7 +1643,6 @@ mod tests {
             }
         )
     }
-
     #[test]
     fn handle_set_configuration_works() {
         let set_gas_price_params_arc = Arc::new(Mutex::new(vec![]));
@@ -1677,6 +1687,92 @@ mod tests {
 
         let check_start_block_params = set_start_block_params_arc.lock().unwrap();
         assert_eq!(*check_start_block_params, vec![1233333]);
+    }
+
+    #[test]
+    fn handle_set_configuration_works_with_voids() {
+        let persistent_config = PersistentConfigurationMock::new().set_start_block_result(Ok(()));
+        let mut subject = make_subject(Some(persistent_config));
+
+        let result = subject.handle_set_configuration(UiSetConfigurationRequest {
+            gas_price_opt: None,
+            start_block_opt: Some(1233333)},4000);
+
+        assert_eq!(result, MessageBody {
+                opcode: "setConfiguration".to_string(),
+                path: MessagePath::Conversation(4000),
+                payload: Ok(r#"{"successes":["start-block"],"failures":[]}"#.to_string()
+                )});
+    }
+
+    #[test]
+    fn handle_set_configuration_handles_failure_and_collect_success() {
+        let (ui_gateway, _, ui_gateway_recording_arc) = make_recorder();
+        let persistent_config = PersistentConfigurationMock::new()
+            .set_gas_price_result(Ok(()))
+            .set_start_block_result(Err(PersistentConfigError::TransactionError));
+        let subject = make_subject(Some(persistent_config));
+        let subject_addr = subject.start();
+        let peer_actors = peer_actors_builder().ui_gateway(ui_gateway).build();
+        subject_addr.try_send(BindMessage { peer_actors }).unwrap();
+
+        subject_addr
+            .try_send(NodeFromUiMessage {
+                client_id: 1234,
+                body: UiSetConfigurationRequest {
+                    gas_price_opt: Some(55),
+                    start_block_opt: Some(1233333),
+                }
+                    .tmb(4400),
+            })
+            .unwrap();
+
+        let system = System::new("test");
+        System::current().stop();
+        system.run();
+        let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
+        let response = ui_gateway_recording.get_record::<NodeToUiMessage>(0);
+        let (set_config_response, context_id) =
+            UiSetConfigurationResponse::fmb(response.body.clone()).unwrap();
+        assert_eq!(context_id, 4400);
+        assert_eq!(set_config_response.successes.len(), 1);
+        assert_eq!(set_config_response.failures.len(), 1);
+        assert_eq!(set_config_response.successes[0], "gas-price".to_string());
+        assert_eq!(set_config_response.failures[0], "start-block: TransactionError".to_string());
+    }
+
+    #[test]
+    fn handle_set_configuration_works_terminates_after_failure_immediately() {
+        let (ui_gateway, _, ui_gateway_recording_arc) = make_recorder();
+        let persistent_config = PersistentConfigurationMock::new()
+            .set_gas_price_result(Err(PersistentConfigError::DatabaseError("dunno".to_string())));
+        let subject = make_subject(Some(persistent_config));
+        let subject_addr = subject.start();
+        let peer_actors = peer_actors_builder().ui_gateway(ui_gateway).build();
+        subject_addr.try_send(BindMessage { peer_actors }).unwrap();
+
+        subject_addr
+            .try_send(NodeFromUiMessage {
+                client_id: 1234,
+                body: UiSetConfigurationRequest {
+                    gas_price_opt: Some(55),
+                    start_block_opt: None,
+                }
+                    .tmb(4400),
+            })
+            .unwrap();
+
+        let system = System::new("test");
+        System::current().stop();
+        system.run();
+        let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
+        let response = ui_gateway_recording.get_record::<NodeToUiMessage>(0);
+        let (set_config_response, context_id) =
+            UiSetConfigurationResponse::fmb(response.body.clone()).unwrap();
+        assert_eq!(context_id, 4400);
+        assert_eq!(set_config_response.successes.len(), 0);
+        assert_eq!(set_config_response.failures.len(), 1);
+        assert_eq!(set_config_response.failures[0], r#"gas-price: DatabaseError("dunno")"#.to_string());
     }
 
     #[test]
