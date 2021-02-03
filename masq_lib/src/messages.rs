@@ -579,21 +579,26 @@ conversation_message!(UiRecoverWalletsRequest, "recoverWallet");
 pub struct UiRecoverWalletsResponse {}
 conversation_message!(UiRecoverWalletsResponse, "recoverWallet");
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct UiSetConfigurationBroadcast {}
-fire_and_forget_message!(UiSetConfigurationBroadcast, "setConfiguration");
+// #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+// pub struct UiSetConfigurationBroadcast {}
+// fire_and_forget_message!(UiSetConfigurationBroadcast, "setConfiguration");
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct UiSetConfigurationRequest {
     #[serde(rename = "gasPriceOpt")]
-    pub gas_price_opt: Option<u16>,
+    pub gas_price_opt: Option<u64>,
     #[serde(rename = "startBlockOpt")]
-    pub start_block_opt: Option<u32>,
+    pub start_block_opt: Option<u64>,
 }
 conversation_message!(UiSetConfigurationRequest, "setConfiguration");
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct UiSetConfigurationResponse {}
+pub struct UiSetConfigurationResponse {
+    #[serde(rename = "successes")]
+    pub successes: Vec<String>,
+    #[serde(rename = "failures")]
+    pub failures: Vec<String>,
+}
 conversation_message!(UiSetConfigurationResponse, "setConfiguration");
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

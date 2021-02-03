@@ -362,7 +362,7 @@ pub mod common_validators {
 
     pub fn validate_gas_price(gas_price: String) -> Result<(), String> {
         match gas_price.parse::<u8>() {
-            Ok(gp) if gp > 0 && gp < 100 => Ok(()), //TODO isn't the low threshold check redundant?
+            Ok(gp) if gp > 0 && gp < 100 => Ok(()),
             _ => Err(gas_price),
         }
     }

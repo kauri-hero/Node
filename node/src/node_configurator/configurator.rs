@@ -29,6 +29,7 @@ use crate::sub_lib::peer_actors::BindMessage;
 use crate::sub_lib::wallet::{Wallet, WalletError};
 use crate::test_utils::main_cryptde;
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
+use itertools::Itertools;
 use rustc_hex::ToHex;
 use std::str::FromStr;
 
@@ -566,13 +567,13 @@ impl Configurator {
         context_id: u64,
     ) -> MessageBody {
         match Self::unfriendly_set_configuration(msg, context_id, &mut self.persistent_config) {
-            Ok(message_body) => unimplemented!(), // message_body,
+            Ok(message_body) => message_body,
             Err((code, msg)) => unimplemented!(), /* MessageBody {
-                                                       opcode: "configuration".to_string(),
-                                                       path: MessagePath::Conversation(context_id),
-                                                       payload: Err((code, msg)),
-                                                   },
-                                                   */
+                                                      opcode: "configuration".to_string(),
+                                                      path: MessagePath::Conversation(context_id),
+                                                      payload: Err((code, msg)),
+                                                  },
+                                                  */
         }
     }
 
@@ -581,13 +582,81 @@ impl Configurator {
         context_id: u64,
         persistent_config: &mut Box<dyn PersistentConfiguration>,
     ) -> Result<MessageBody, MessageError> {
-        if msg.gas_price_opt.is_some() {
-            unimplemented!()
-        } else if msg.start_block_opt.is_some() {
-            unimplemented!()
-        }
+        let mut data_collector: Vec<Result<Option<String>, String>> = vec![];
+        Self::parameter_to_be_processed(
+            msg.gas_price_opt,
+            Self::set_gas_price,
+            persistent_config,
+            &mut data_collector,
+        );
+        Self::parameter_to_be_processed(
+            msg.start_block_opt,
+            Self::set_start_block,
+            persistent_config,
+            &mut data_collector,
+        );
 
-        Ok((UiSetConfigurationResponse {}).tmb()) //change for a direct declaration of the body?
+        //place for adding future functionalities
+
+        let (mut successes, mut failures): (Vec<_>, Vec<_>) = data_collector
+            .into_iter()
+            .take_while(|i| i.as_ref().unwrap_or(&Some("".to_string())).is_some())
+            .into_iter()
+            .map(|i| i.map(|inner| inner.expect("Fake Some()")))
+            .into_iter()
+            .partition(|i| i.is_ok());
+        let successes = successes
+            .into_iter()
+            .map(|i| i.expect("Fake Ok()"))
+            .collect();
+        let failures = failures
+            .into_iter()
+            .map(|i| i.expect_err("Fake Ok()"))
+            .collect();
+        Ok((UiSetConfigurationResponse {
+            successes,
+            failures,
+        })
+        .tmb(context_id))
+    }
+
+    fn parameter_to_be_processed<T, F>(
+        parameter: Option<T>,
+        f: F,
+        config: &mut Box<dyn PersistentConfiguration>,
+        collector: &mut Vec<Result<Option<String>, String>>,
+    ) where
+        F: FnOnce(T, &mut Box<dyn PersistentConfiguration>) -> Result<String, String>,
+    {
+        let result = if let Some(value) = parameter {
+            match f(value, config) {
+                Ok(str) => Ok(Some(str)),
+                Err(str) => Err(str),
+            }
+        } else {
+            Ok(None)
+        };
+        collector.push(result)
+    }
+
+    fn set_gas_price(
+        price_value: u64,
+        config: &mut Box<dyn PersistentConfiguration>,
+    ) -> Result<String, String> {
+        match config.set_gas_price(price_value) {
+            Ok(_) => Ok("gas-price".to_string()),
+            Err(e) => unimplemented!(), // Err(format!("{:?}", e))
+        }
+    }
+
+    fn set_start_block(
+        block_number: u64,
+        config: &mut Box<dyn PersistentConfiguration>,
+    ) -> Result<String, String> {
+        match config.set_start_block(block_number) {
+            Ok(_) => Ok("start-block".to_string()),
+            Err(e) => unimplemented!(), // Err(format!("{:?}", e))
+        }
     }
 
     fn send_to_ui_gateway(&self, target: MessageTarget, body: MessageBody) {
@@ -1562,6 +1631,52 @@ mod tests {
                 ))
             }
         )
+    }
+
+    #[test]
+    fn handle_set_configuration_works() {
+        let set_gas_price_params_arc = Arc::new(Mutex::new(vec![]));
+        let set_start_block_params_arc = Arc::new(Mutex::new(vec![]));
+        let (ui_gateway, _, ui_gateway_recording_arc) = make_recorder();
+        let persistent_config = PersistentConfigurationMock::new()
+            .set_gas_price_params(&set_gas_price_params_arc)
+            .set_start_block_params(&set_start_block_params_arc)
+            .set_gas_price_result(Ok(()))
+            .set_start_block_result(Ok(()));
+        let subject = make_subject(Some(persistent_config));
+        let subject_addr = subject.start();
+        let peer_actors = peer_actors_builder().ui_gateway(ui_gateway).build();
+        subject_addr.try_send(BindMessage { peer_actors }).unwrap();
+
+        subject_addr
+            .try_send(NodeFromUiMessage {
+                client_id: 1234,
+                body: UiSetConfigurationRequest {
+                    gas_price_opt: Some(45),
+                    start_block_opt: Some(1233333),
+                }
+                .tmb(4444),
+            })
+            .unwrap();
+
+        let system = System::new("test");
+        System::current().stop();
+        system.run();
+        let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
+        let response = ui_gateway_recording.get_record::<NodeToUiMessage>(0);
+        let (set_config_response, context_id) =
+            UiSetConfigurationResponse::fmb(response.body.clone()).unwrap();
+        assert_eq!(context_id, 4444);
+        assert_eq!(set_config_response.successes.len(), 2);
+        assert_eq!(set_config_response.failures.len(), 0);
+        assert_eq!(set_config_response.successes[0], "gas-price".to_string());
+        assert_eq!(set_config_response.successes[1], "start-block".to_string());
+
+        let check_gas_price_params = set_gas_price_params_arc.lock().unwrap();
+        assert_eq!(*check_gas_price_params, vec![45]);
+
+        let check_start_block_params = set_start_block_params_arc.lock().unwrap();
+        assert_eq!(*check_start_block_params, vec![1233333]);
     }
 
     #[test]
