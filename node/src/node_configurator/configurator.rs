@@ -29,8 +29,11 @@ use crate::sub_lib::peer_actors::BindMessage;
 use crate::sub_lib::wallet::{Wallet, WalletError};
 use crate::test_utils::main_cryptde;
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
+use heck::TitleCase;
 use rustc_hex::ToHex;
+use std::fmt::{Debug, Display};
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 
 pub const CONFIGURATOR_PREFIX: u64 = 0x0001_0000_0000_0000;
 pub const CONFIGURATOR_READ_ERROR: u64 = CONFIGURATOR_PREFIX | 1;
@@ -565,91 +568,69 @@ impl Configurator {
         msg: UiSetConfigurationRequest,
         context_id: u64,
     ) -> MessageBody {
-        let mut data_collector: Vec<Result<Option<String>, String>> = vec![];
-
-        Self::stop_when_first_failure(msg,&mut self.persistent_config,&mut data_collector);
-
-        let (successes, failures): (Vec<_>, Vec<_>) = data_collector
-            .into_iter()
-            .partition(|i| i.is_ok());
-        let successes = successes
-            .into_iter()
-            .map(|i| i.expect("Fake Ok()"))
-            .into_iter()
-            .skip_while(|i| i.is_none())
-            .into_iter()
-            .map(|i| i.expect("Fake Some()"))
-            .collect();
-        let failures:Vec<_> = failures
-            .into_iter()
-            .map(|i| i.expect_err("Fake Err()"))
-            .collect();
-        UiSetConfigurationResponse {
-            successes,
-            failures,
-        }.tmb(context_id)
+        match Self::unfriendly_handle_set_configuration(
+            msg,
+            context_id,
+            &mut self.persistent_config,
+        ) {
+            Ok(message_body) => message_body,
+            Err((code, msg)) => MessageBody {
+                opcode: "setConfiguration".to_string(),
+                path: MessagePath::Conversation(context_id),
+                payload: Err((code, msg)),
+            },
+        }
     }
 
-    fn parameter_to_be_processed<T, F>(
-        parameter: Option<T>,
-        f: F,
-        config: &mut Box<dyn PersistentConfiguration>,
-        collector: &mut Vec<Result<Option<String>, String>>,
-    )-> Result<(),()>
-        where
-        F: FnOnce(T, &mut Box<dyn PersistentConfiguration>) -> Result<String, String>,
-    {
-        let result = if let Some(value) = parameter {
-            match f(value, config) {
-                Ok(str) => Ok(Some(str)),
-                Err(str) => {collector.push(Err(str)); return Err(())
-                }
+    fn unfriendly_handle_set_configuration(
+        msg: UiSetConfigurationRequest,
+        context_id: u64,
+        persist_config: &mut Box<dyn PersistentConfiguration>,
+    ) -> Result<MessageBody, MessageError> {
+        let password: Option<String> = None; //prepared for an upgrade with parameters requiring the password
+
+        let _ = if password.is_none() {
+            if "gas-price" == &msg.name {
+                Self::set_gas_price(msg.value, persist_config)?;
+            } else if "start-block" == &msg.name {
+                Self::set_start_block(msg.value, persist_config)?;
+            } else {
+                panic!("should not reach")
             }
         } else {
-            Ok(None)
+            if "blah" == &msg.name {
+                //use the password in the function that you will call here
+                unimplemented!();
+            } else if "blah" == &msg.name {
+                //use the password in the function that you will call here
+                unimplemented!();
+            } else {
+                panic!("should not reach")
+            }
         };
-        collector.push(result);
-        Ok(())
-    }
 
-    fn stop_when_first_failure(msg: UiSetConfigurationRequest,
-        persistent_config: &mut Box<dyn PersistentConfiguration>,
-        data_collector: &mut Vec<Result<Option<String>, String>>)->Result<(),()>{
-        Self::parameter_to_be_processed(
-            msg.gas_price_opt,
-            Self::set_gas_price,
-            persistent_config,
-            data_collector,
-        )?;
-        Self::parameter_to_be_processed(
-            msg.start_block_opt,
-            Self::set_start_block,
-            persistent_config,
-            data_collector,
-        )?;
-
-        //place for adding future functionalities
-
-        Ok(())
+        Ok(UiSetConfigurationResponse {}.tmb(context_id))
     }
 
     fn set_gas_price(
-        price_value: u64,
+        string_price: String,
         config: &mut Box<dyn PersistentConfiguration>,
-    ) -> Result<String, String> {
-        match config.set_gas_price(price_value) {
-            Ok(_) => Ok("gas-price".to_string()),
-            Err(e) => Err(format!("gas-price: {:?}", e))
+    ) -> Result<(), (u64, String)> {
+        let price_number = string_price.parse::<u64>().expect("Fake string number");
+        match config.set_gas_price(price_number) {
+            Ok(_) => Ok(()),
+            Err(e) => Err((CONFIGURATOR_WRITE_ERROR, format!("gas-price: {:?}", e))),
         }
     }
 
     fn set_start_block(
-        block_number: u64,
+        string_number: String,
         config: &mut Box<dyn PersistentConfiguration>,
-    ) -> Result<String, String> {
+    ) -> Result<(), (u64, String)> {
+        let block_number = string_number.parse::<u64>().expect("Fake string number");
         match config.set_start_block(block_number) {
-            Ok(_) => Ok("start-block".to_string()),
-            Err(e) => Err(format!("start-block: {:?}", e))
+            Ok(_) => Ok(()),
+            Err(e) => Err((CONFIGURATOR_WRITE_ERROR, format!("start-block: {:?}", e))),
         }
     }
 
@@ -696,6 +677,7 @@ impl Configurator {
         debug!(&self.logger, "Sending response to {} command:", body.opcode);
     }
 }
+enum SetConfigurationError {}
 
 #[cfg(test)]
 mod tests {
@@ -1628,13 +1610,10 @@ mod tests {
     }
     #[test]
     fn handle_set_configuration_works() {
-        let set_gas_price_params_arc = Arc::new(Mutex::new(vec![]));
         let set_start_block_params_arc = Arc::new(Mutex::new(vec![]));
         let (ui_gateway, _, ui_gateway_recording_arc) = make_recorder();
         let persistent_config = PersistentConfigurationMock::new()
-            .set_gas_price_params(&set_gas_price_params_arc)
             .set_start_block_params(&set_start_block_params_arc)
-            .set_gas_price_result(Ok(()))
             .set_start_block_result(Ok(()));
         let subject = make_subject(Some(persistent_config));
         let subject_addr = subject.start();
@@ -1645,8 +1624,8 @@ mod tests {
             .try_send(NodeFromUiMessage {
                 client_id: 1234,
                 body: UiSetConfigurationRequest {
-                    gas_price_opt: Some(45),
-                    start_block_opt: Some(1233333),
+                    name: "start-block".to_string(),
+                    value: "166666".to_string(),
                 }
                 .tmb(4444),
             })
@@ -1657,69 +1636,89 @@ mod tests {
         system.run();
         let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
         let response = ui_gateway_recording.get_record::<NodeToUiMessage>(0);
-        let (set_config_response, context_id) =
-            UiSetConfigurationResponse::fmb(response.body.clone()).unwrap();
+        let (_, context_id) = UiSetConfigurationResponse::fmb(response.body.clone()).unwrap();
         assert_eq!(context_id, 4444);
-        assert_eq!(set_config_response.successes.len(), 2);
-        assert_eq!(set_config_response.failures.len(), 0);
-        assert_eq!(set_config_response.successes[0], "gas-price".to_string());
-        assert_eq!(set_config_response.successes[1], "start-block".to_string());
-
-        let check_gas_price_params = set_gas_price_params_arc.lock().unwrap();
-        assert_eq!(*check_gas_price_params, vec![45]);
 
         let check_start_block_params = set_start_block_params_arc.lock().unwrap();
-        assert_eq!(*check_start_block_params, vec![1233333]);
-    }
-
-        #[test]
-    fn handle_set_configuration_works_with_voids() {
-        let persistent_config = PersistentConfigurationMock::new().set_start_block_result(Ok(()));
-        let mut subject = make_subject(Some(persistent_config));
-
-        let result = subject.handle_set_configuration(UiSetConfigurationRequest {
-            gas_price_opt: None,
-            start_block_opt: Some(1233333)},4000);
-
-        assert_eq!(result, MessageBody {
-            opcode: "setConfiguration".to_string(),
-            path: MessagePath::Conversation(4000),
-            payload: Ok(r#"{"successes":["start-block"],"failures":[]}"#.to_string()
-            )});
+        assert_eq!(*check_start_block_params, vec![166666]);
     }
 
     #[test]
-    fn handle_set_configuration_handles_failure_and_collect_success() {
-        let persistent_config = PersistentConfigurationMock::new()
-            .set_gas_price_result(Ok(()))
-            .set_start_block_result(Err(PersistentConfigError::TransactionError));
+    fn handle_set_configuration_works_for_gas_price() {
+        let persistent_config = PersistentConfigurationMock::new().set_gas_price_result(Ok(()));
         let mut subject = make_subject(Some(persistent_config));
 
-        let result = subject.handle_set_configuration(UiSetConfigurationRequest {
-            gas_price_opt: Some(55),
-            start_block_opt: Some(1233333)},4000);
+        let result = subject.handle_set_configuration(
+            UiSetConfigurationRequest {
+                name: "gas-price".to_string(),
+                value: "68".to_string(),
+            },
+            4000,
+        );
 
-        let (deserialized,id) = UiSetConfigurationResponse::fmb(result).unwrap();
-        assert_eq!(deserialized.successes,vec!["gas-price".to_string()]);
-        assert_eq!(deserialized.failures,vec!["start-block: TransactionError".to_string()]);
-        assert_eq!(id,4000);
+        assert_eq!(
+            result,
+            MessageBody {
+                opcode: "setConfiguration".to_string(),
+                path: MessagePath::Conversation(4000),
+                payload: Ok(r#"{}"#.to_string())
+            }
+        );
+    }
+
+    #[test]
+    fn handle_set_configuration_handles_failure_on_gas_price() {
+        let persistent_config = PersistentConfigurationMock::new()
+            .set_gas_price_result(Err(PersistentConfigError::TransactionError));
+        let mut subject = make_subject(Some(persistent_config));
+
+        let result = subject.handle_set_configuration(
+            UiSetConfigurationRequest {
+                name: "gas-price".to_string(),
+                value: "55".to_string(),
+            },
+            4000,
+        );
+
+        assert_eq!(
+            result,
+            MessageBody {
+                opcode: "setConfiguration".to_string(),
+                path: MessagePath::Conversation(4000),
+                payload: Err((
+                    CONFIGURATOR_WRITE_ERROR,
+                    "gas-price: TransactionError".to_string()
+                ))
+            }
+        );
     }
 
     #[test]
     fn handle_set_configuration_works_terminates_after_failure_immediately() {
-        let persistent_config = PersistentConfigurationMock::new()
-            .set_gas_price_result(Err(PersistentConfigError::DatabaseError("dunno".to_string())));
+        let persistent_config = PersistentConfigurationMock::new().set_start_block_result(Err(
+            PersistentConfigError::DatabaseError("dunno".to_string()),
+        ));
         let mut subject = make_subject(Some(persistent_config));
 
-        let result = subject.handle_set_configuration(UiSetConfigurationRequest {
-            gas_price_opt: Some(55),
-            start_block_opt: None},4000);
+        let result = subject.handle_set_configuration(
+            UiSetConfigurationRequest {
+                name: "start-block".to_string(),
+                value: "166666".to_string(),
+            },
+            4000,
+        );
 
-        let (deserialized,id) = UiSetConfigurationResponse::fmb(result).unwrap();
-        let empty_vec:Vec<String> = Vec::new();
-        assert_eq!(deserialized.successes, empty_vec);
-        assert_eq!(deserialized.failures,vec![r#"gas-price: DatabaseError("dunno")"#.to_string()]);
-        assert_eq!(id,4000);
+        assert_eq!(
+            result,
+            MessageBody {
+                opcode: "setConfiguration".to_string(),
+                path: MessagePath::Conversation(4000),
+                payload: Err((
+                    CONFIGURATOR_WRITE_ERROR,
+                    r#"start-block: DatabaseError("dunno")"#.to_string()
+                ))
+            }
+        );
     }
 
     #[test]

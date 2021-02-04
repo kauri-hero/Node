@@ -1,11 +1,11 @@
 use crate::command_context::CommandContext;
-use crate::commands::commands_common::{Command, CommandError, transaction};
-use clap::{App, Arg, ArgMatches, Error, SubCommand, ArgGroup};
+use crate::commands::commands_common::{transaction, Command, CommandError};
+use clap::{App, Arg, ArgGroup, ArgMatches, Error, SubCommand};
+use masq_lib::messages::{UiSetConfigurationRequest, UiSetConfigurationResponse};
 use masq_lib::shared_schema::common_validators;
 use masq_lib::shared_schema::GAS_PRICE_HELP;
 use std::any::Any;
 use websocket::server::upgrade::validate;
-use masq_lib::messages::{UiSetConfigurationRequest, UiSetConfigurationResponse};
 
 #[derive(Debug, PartialEq)]
 pub struct SetConfigurationCommand {
@@ -16,11 +16,14 @@ pub struct SetConfigurationCommand {
 impl SetConfigurationCommand {
     pub fn new(pieces: Vec<String>) -> Result<Self, String> {
         if pieces.len() != 1 {
-            let preserved_name = pieces[1].clone().replace("--","");
+            let preserved_name = pieces[1].clone().replace("--", "");
             match set_configuration_subcommand().get_matches_from_safe(pieces) {
                 Ok(matches) => Ok(SetConfigurationCommand {
                     name: preserved_name.clone(),
-                    value: matches.value_of(preserved_name).expect("parameter value not properly required").to_string()
+                    value: matches
+                        .value_of(preserved_name)
+                        .expect("parameter value not properly required")
+                        .to_string(),
                 }),
                 Err(e) => Err(format!("{}", e)),
             }
@@ -32,7 +35,7 @@ impl SetConfigurationCommand {
 
 fn validate_start_block(start_block: String) -> Result<(), String> {
     match start_block.parse::<u64>() {
-        Ok(_) => Ok(()),                       // TODO consider how to write a broader check; now I am heading to a check on the side of Node.
+        Ok(_) => Ok(()), // TODO consider how to write a broader check; now I am heading to a check on the side of Node.
         _ => Err(start_block),
     }
 }
@@ -41,7 +44,7 @@ impl Command for SetConfigurationCommand {
     fn execute(&self, context: &mut dyn CommandContext) -> Result<(), CommandError> {
         let input = UiSetConfigurationRequest {
             name: self.name.clone(),
-            value: self.value.clone()
+            value: self.value.clone(),
         };
 
         let _: UiSetConfigurationResponse = transaction(input, context, 1000)?;
@@ -84,23 +87,29 @@ pub fn set_configuration_subcommand() -> App<'static, 'static> {
             )
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Arc, Mutex};
     use crate::test_utils::mocks::CommandContextMock;
-    use masq_lib::messages::{UiSetConfigurationResponse, ToMessageBody, UiSetConfigurationRequest};
-
+    use masq_lib::messages::{
+        ToMessageBody, UiSetConfigurationRequest, UiSetConfigurationResponse,
+    };
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn only_one_parameter_at_a_time_is_permitted() {
         let result = set_configuration_subcommand()
-            .get_matches_from_safe(&["set-configuration","--gas-price","70","--start-block","44444"])
-            .unwrap_err().to_string();
+            .get_matches_from_safe(&[
+                "set-configuration",
+                "--gas-price",
+                "70",
+                "--start-block",
+                "44444",
+            ])
+            .unwrap_err()
+            .to_string();
         assert!(result.contains("cannot be used with one or more of the other specified arguments"));
     }
-
 
     #[test]
     fn validate_start_block_works() {
@@ -118,7 +127,7 @@ mod tests {
         let stderr_arc = context.stderr_arc();
         let subject = SetConfigurationCommand {
             name: "start-block".to_string(),
-            value: "123456".to_string()
+            value: "123456".to_string(),
         };
 
         let result = subject.execute(&mut context);
@@ -132,16 +141,13 @@ mod tests {
                     name: "start-block".to_string(),
                     value: "123456".to_string()
                 }
-                    .tmb(0),
+                .tmb(0),
                 1000
             )]
         );
         let stderr = stderr_arc.lock().unwrap();
         assert_eq!(*stderr.get_string(), String::new());
         let stdout = stdout_arc.lock().unwrap();
-        assert_eq!(
-            &stdout.get_string(),
-            "Parameter setting went correct\n"
-        );
+        assert_eq!(&stdout.get_string(), "Parameter setting went correct\n");
     }
 }
