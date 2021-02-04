@@ -585,20 +585,16 @@ conversation_message!(UiRecoverWalletsResponse, "recoverWallet");
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct UiSetConfigurationRequest {
-    #[serde(rename = "gasPriceOpt")]
-    pub gas_price_opt: Option<u64>,
-    #[serde(rename = "startBlockOpt")]
-    pub start_block_opt: Option<u64>,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "value")]
+    pub value: String,
 }
 conversation_message!(UiSetConfigurationRequest, "setConfiguration");
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct UiSetConfigurationResponse {
-    #[serde(rename = "successes")]
-    pub successes: Vec<String>,
-    #[serde(rename = "failures")]
-    pub failures: Vec<String>,
-}
+pub struct UiSetConfigurationResponse {}
+
 conversation_message!(UiSetConfigurationResponse, "setConfiguration");
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

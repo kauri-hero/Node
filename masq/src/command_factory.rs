@@ -230,8 +230,8 @@ mod tests {
                 .downcast_ref::<SetConfigurationCommand>()
                 .unwrap(),
             &SetConfigurationCommand {
-                gas_price_opt: Some(20),
-                start_block_opt: None
+                name: "gas-price".to_string(),
+                value: "20".to_string(),
             }
         );
     }
