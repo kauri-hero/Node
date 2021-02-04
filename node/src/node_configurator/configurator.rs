@@ -1672,90 +1672,54 @@ mod tests {
         assert_eq!(*check_start_block_params, vec![1233333]);
     }
 
-    #[test]
-fn handle_set_configuration_works_with_voids() {
-    let persistent_config = PersistentConfigurationMock::new().set_start_block_result(Ok(()));
-    let mut subject = make_subject(Some(persistent_config));
+        #[test]
+    fn handle_set_configuration_works_with_voids() {
+        let persistent_config = PersistentConfigurationMock::new().set_start_block_result(Ok(()));
+        let mut subject = make_subject(Some(persistent_config));
 
-    let result = subject.handle_set_configuration(UiSetConfigurationRequest {
-        gas_price_opt: None,
-        start_block_opt: Some(1233333)},4000);
+        let result = subject.handle_set_configuration(UiSetConfigurationRequest {
+            gas_price_opt: None,
+            start_block_opt: Some(1233333)},4000);
 
-    assert_eq!(result, MessageBody {
-        opcode: "setConfiguration".to_string(),
-        path: MessagePath::Conversation(4000),
-        payload: Ok(r#"{"successes":["start-block"],"failures":[]}"#.to_string()
-        )});
-}
+        assert_eq!(result, MessageBody {
+            opcode: "setConfiguration".to_string(),
+            path: MessagePath::Conversation(4000),
+            payload: Ok(r#"{"successes":["start-block"],"failures":[]}"#.to_string()
+            )});
+    }
 
     #[test]
     fn handle_set_configuration_handles_failure_and_collect_success() {
-        let (ui_gateway, _, ui_gateway_recording_arc) = make_recorder();
         let persistent_config = PersistentConfigurationMock::new()
             .set_gas_price_result(Ok(()))
             .set_start_block_result(Err(PersistentConfigError::TransactionError));
-        let subject = make_subject(Some(persistent_config));
-        let subject_addr = subject.start();
-        let peer_actors = peer_actors_builder().ui_gateway(ui_gateway).build();
-        subject_addr.try_send(BindMessage { peer_actors }).unwrap();
+        let mut subject = make_subject(Some(persistent_config));
 
-        subject_addr
-            .try_send(NodeFromUiMessage {
-                client_id: 1234,
-                body: UiSetConfigurationRequest {
-                    gas_price_opt: Some(55),
-                    start_block_opt: Some(1233333),
-                }
-                    .tmb(4400),
-            })
-            .unwrap();
+        let result = subject.handle_set_configuration(UiSetConfigurationRequest {
+            gas_price_opt: Some(55),
+            start_block_opt: Some(1233333)},4000);
 
-        let system = System::new("test");
-        System::current().stop();
-        system.run();
-        let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
-        let response = ui_gateway_recording.get_record::<NodeToUiMessage>(0);
-        let (set_config_response, context_id) =
-            UiSetConfigurationResponse::fmb(response.body.clone()).unwrap();
-        assert_eq!(context_id, 4400);
-        assert_eq!(set_config_response.successes.len(), 1);
-        assert_eq!(set_config_response.failures.len(), 1);
-        assert_eq!(set_config_response.successes[0], "gas-price".to_string());
-        assert_eq!(set_config_response.failures[0], "start-block: TransactionError".to_string());
+        let (deserialized,id) = UiSetConfigurationResponse::fmb(result).unwrap();
+        assert_eq!(deserialized.successes,vec!["gas-price".to_string()]);
+        assert_eq!(deserialized.failures,vec!["start-block: TransactionError".to_string()]);
+        assert_eq!(id,4000);
     }
 
     #[test]
     fn handle_set_configuration_works_terminates_after_failure_immediately() {
-        let (ui_gateway, _, ui_gateway_recording_arc) = make_recorder();
         let persistent_config = PersistentConfigurationMock::new()
             .set_gas_price_result(Err(PersistentConfigError::DatabaseError("dunno".to_string())));
-        let subject = make_subject(Some(persistent_config));
-        let subject_addr = subject.start();
-        let peer_actors = peer_actors_builder().ui_gateway(ui_gateway).build();
-        subject_addr.try_send(BindMessage { peer_actors }).unwrap();
+        let mut subject = make_subject(Some(persistent_config));
 
-        subject_addr
-            .try_send(NodeFromUiMessage {
-                client_id: 1234,
-                body: UiSetConfigurationRequest {
-                    gas_price_opt: Some(55),
-                    start_block_opt: None,
-                }
-                    .tmb(4400),
-            })
-            .unwrap();
+        let result = subject.handle_set_configuration(UiSetConfigurationRequest {
+            gas_price_opt: Some(55),
+            start_block_opt: None},4000);
 
-        let system = System::new("test");
-        System::current().stop();
-        system.run();
-        let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
-        let response = ui_gateway_recording.get_record::<NodeToUiMessage>(0);
-        let (set_config_response, context_id) =
-            UiSetConfigurationResponse::fmb(response.body.clone()).unwrap();
-        assert_eq!(context_id, 4400);
-        assert_eq!(set_config_response.successes.len(), 0);
-        assert_eq!(set_config_response.failures.len(), 1);
-        assert_eq!(set_config_response.failures[0], r#"gas-price: DatabaseError("dunno")"#.to_string());
+        let (deserialized,id) = UiSetConfigurationResponse::fmb(result).unwrap();
+        let empty_vec:Vec<String> = Vec::new();
+        assert_eq!(deserialized.successes, empty_vec);
+        assert_eq!(deserialized.failures,vec![r#"gas-price: DatabaseError("dunno")"#.to_string()]);
+        assert_eq!(id,4000);
     }
 
     #[test]
