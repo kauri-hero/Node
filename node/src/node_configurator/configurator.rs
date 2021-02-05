@@ -29,11 +29,8 @@ use crate::sub_lib::peer_actors::BindMessage;
 use crate::sub_lib::wallet::{Wallet, WalletError};
 use crate::test_utils::main_cryptde;
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
-use heck::TitleCase;
 use rustc_hex::ToHex;
-use std::fmt::{Debug, Display};
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
 
 pub const CONFIGURATOR_PREFIX: u64 = 0x0001_0000_0000_0000;
 pub const CONFIGURATOR_READ_ERROR: u64 = CONFIGURATOR_PREFIX | 1;
@@ -47,6 +44,7 @@ pub const DERIVATION_PATH_ERROR: u64 = CONFIGURATOR_PREFIX | 8;
 pub const MNEMONIC_PHRASE_ERROR: u64 = CONFIGURATOR_PREFIX | 9;
 pub const VALUE_MISSING_ERROR: u64 = CONFIGURATOR_PREFIX | 10;
 pub const EARLY_QUESTIONING_ABOUT_DATA: u64 = CONFIGURATOR_PREFIX | 11;
+pub const UNRECOGNIZED_PARAMETER: u64 = CONFIGURATOR_PREFIX | 12;
 
 pub struct Configurator {
     persistent_config: Box<dyn PersistentConfiguration>,
@@ -589,23 +587,29 @@ impl Configurator {
     ) -> Result<MessageBody, MessageError> {
         let password: Option<String> = None; //prepared for an upgrade with parameters requiring the password
 
-        let _ = if password.is_none() {
-            if "gas-price" == &msg.name {
-                Self::set_gas_price(msg.value, persist_config)?;
-            } else if "start-block" == &msg.name {
-                Self::set_start_block(msg.value, persist_config)?;
-            } else {
-                panic!("should not reach")
+        let _ = match password {
+            None => {
+                if "gas-price" == &msg.name {
+                    Self::set_gas_price(msg.value, persist_config)?;
+                } else if "start-block" == &msg.name {
+                    Self::set_start_block(msg.value, persist_config)?;
+                } else {
+                    return Err((
+                        UNRECOGNIZED_PARAMETER,
+                        format!("This parameter name is not known: {}", &msg.name),
+                    ));
+                }
             }
-        } else {
-            if "blah" == &msg.name {
-                //use the password in the function that you will call here
-                unimplemented!();
-            } else if "blah" == &msg.name {
-                //use the password in the function that you will call here
-                unimplemented!();
-            } else {
-                panic!("should not reach")
+            Some(_password) => {
+                if "blah" == &msg.name {
+                    //use the password in the function that you will call here
+                    unimplemented!();
+                } else if "blah" == &msg.name {
+                    //use the password in the function that you will call here
+                    unimplemented!();
+                } else {
+                    unimplemented!()
+                }
             }
         };
 
@@ -677,14 +681,11 @@ impl Configurator {
         debug!(&self.logger, "Sending response to {} command:", body.opcode);
     }
 }
-enum SetConfigurationError {}
 
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
-
     use actix::System;
-
     use masq_lib::messages::{
         ToMessageBody, UiChangePasswordResponse, UiCheckPasswordRequest, UiCheckPasswordResponse,
         UiGenerateWalletsResponse, UiNewPasswordBroadcast, UiStartOrder, UiWalletAddressesRequest,
@@ -1716,6 +1717,32 @@ mod tests {
                 payload: Err((
                     CONFIGURATOR_WRITE_ERROR,
                     r#"start-block: DatabaseError("dunno")"#.to_string()
+                ))
+            }
+        );
+    }
+
+    #[test]
+    fn handle_set_configuration_complains_about_unexpected_parameter() {
+        let persistent_config = PersistentConfigurationMock::new();
+        let mut subject = make_subject(Some(persistent_config));
+
+        let result = subject.handle_set_configuration(
+            UiSetConfigurationRequest {
+                name: "blabla".to_string(),
+                value: "166666".to_string(),
+            },
+            4000,
+        );
+
+        assert_eq!(
+            result,
+            MessageBody {
+                opcode: "setConfiguration".to_string(),
+                path: MessagePath::Conversation(4000),
+                payload: Err((
+                    UNRECOGNIZED_PARAMETER,
+                    "This parameter name is not known: blabla".to_string()
                 ))
             }
         );
