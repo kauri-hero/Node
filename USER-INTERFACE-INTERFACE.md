@@ -702,6 +702,43 @@ The UI should disconnect from the Daemon, connect to the Node on `localhost` at 
 reconstruct the original message from the `opcode`, `contextId`, and `payload` fields, and send it to the
 Node.
 
+#### `setConfiguration`
+##### Direction: Request
+##### Correspondent: Node
+##### Layout:
+```
+"payload": {
+    "name": <string>
+    "value": <string>
+}
+```
+*Note: the design of this message is likely to change in the future. A field for the database password will appear. 
+At the current time, there are no parameters requiring the password among those supported by this command.*
+
+##### Description:
+This is a message used to change a parameter whilst the Node is running. The range of supported parameters (available
+to be set by this command) may get larger with time.You always can set only a value for a single parameter. Multiple
+queries are not permitted and a warning message is displayed at such case. Also, this command with no parameters will
+call a warning since does not serve either that way. 
+
+The `name` field in the payload is the name of the parameter which the user wants to modify and has this form:
+e.g. start-block or gas-price (with a dash between words).
+
+The `value` field in the payload is the value which the user wants to assign to the respective parameter newly.
+There is a parsing check on the side of the CLI UI which warrants that an unparseable value will not reach the
+code on the side of the Node if numeric parameters are in considerations.  
+
+#### `setConfiguration`
+##### Direction: Response
+##### Correspondent: Node
+##### Layout:
+```
+"payload": {
+}
+```
+##### Description:
+If the value of the respective parameter was successfully changed, this is a simple acknowledgment that the change is complete.
+
 #### `setup`
 ##### Direction: Request
 ##### Correspondent: Daemon

@@ -29,6 +29,7 @@ use crate::sub_lib::peer_actors::BindMessage;
 use crate::sub_lib::wallet::{Wallet, WalletError};
 use crate::test_utils::main_cryptde;
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
+use core::unicode::conversions::to_lower;
 use rustc_hex::ToHex;
 use std::str::FromStr;
 
@@ -684,7 +685,6 @@ impl Configurator {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
     use actix::System;
     use masq_lib::messages::{
         ToMessageBody, UiChangePasswordResponse, UiCheckPasswordRequest, UiCheckPasswordResponse,
@@ -692,6 +692,7 @@ mod tests {
         UiWalletAddressesResponse,
     };
     use masq_lib::ui_gateway::{MessagePath, MessageTarget};
+    use std::sync::{Arc, Mutex};
 
     use crate::db_config::persistent_configuration::{
         PersistentConfigError, PersistentConfigurationReal,
