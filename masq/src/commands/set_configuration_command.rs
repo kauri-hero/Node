@@ -27,7 +27,10 @@ impl SetConfigurationCommand {
                 Err(e) => Err(format!("{}", e)),
             }
         } else {
-            Err("This command is not supported without arguments".to_string())
+            Err(
+                "This command is not supported without arguments. Try help for more information"
+                    .to_string(),
+            )
         }
     }
 }
@@ -47,7 +50,7 @@ impl Command for SetConfigurationCommand {
         };
 
         let _: UiSetConfigurationResponse = transaction(input, context, 1000)?;
-        writeln!(context.stdout(), "Parameter setting went correct").expect("writeln! failed");
+        writeln!(context.stdout(), "Setting the parameter went correct").expect("writeln! failed");
         Ok(())
     }
 
@@ -71,7 +74,7 @@ pub fn set_configuration_subcommand() -> App<'static, 'static> {
         )
         .arg(
             Arg::with_name("start-block")
-                .help("Order number of the Ethereum block where scanning for transactions will start at.\
+                .help("Order number of the Ethereum block where scanning for transactions will start at. \
                 Refrain from choosing a number higher than of the last block that was attached to the blockchain.") //TODO: let's find a way in the future to be more specific about some reasonable range
                 .long("start-block")
                 .value_name("START-BLOCK")
@@ -147,6 +150,6 @@ mod tests {
         let stderr = stderr_arc.lock().unwrap();
         assert_eq!(*stderr.get_string(), String::new());
         let stdout = stdout_arc.lock().unwrap();
-        assert_eq!(&stdout.get_string(), "Parameter setting went correct\n");
+        assert_eq!(&stdout.get_string(), "Setting the parameter went correct\n");
     }
 }

@@ -277,10 +277,9 @@ mod tests {
             x => panic!("Expected syntax error, got {:?}", x),
         };
         assert_eq!(
-            msg.contains("This command is not supported without arguments"),
-            true,
-            "{}",
-            msg
+            msg,
+            "This command is not supported without arguments. Try help for more information"
+                .to_string(),
         );
     }
 
