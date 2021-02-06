@@ -21,7 +21,7 @@ impl SetConfigurationCommand {
                     name: preserved_name.clone(),
                     value: matches
                         .value_of(preserved_name)
-                        .expect("parameter value not properly required")
+                        .expect("should not reach this state")
                         .to_string(),
                 }),
                 Err(e) => Err(format!("{}", e)),
@@ -74,8 +74,8 @@ pub fn set_configuration_subcommand() -> App<'static, 'static> {
         )
         .arg(
             Arg::with_name("start-block")
-                .help("Order number of the Ethereum block where scanning for transactions will start at. \
-                Refrain from choosing a number higher than of the last block that was attached to the blockchain.") //TODO: let's find a way in the future to be more specific about some reasonable range
+                .help("Order number of the Ethereum block where scanning for transactions will start. \
+                Refrain from choosing a number higher than of the last block in the blockchain.") //TODO: let's find a way in the future to be more specific about some reasonable range
                 .long("start-block")
                 .value_name("START-BLOCK")
                 .takes_value(true)
