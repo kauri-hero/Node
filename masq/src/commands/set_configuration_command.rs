@@ -58,7 +58,7 @@ impl Command for SetConfigurationCommand {
 
 pub fn set_configuration_subcommand() -> App<'static, 'static> {
     SubCommand::with_name("set-configuration")
-        .about("Sets Node configuration values being enabled for that operation when the Node is running")
+        .about("Sets Node configuration parameters being enabled for this operation when the Node is running")
         .arg(
             Arg::with_name("gas-price")
                 .help(&GAS_PRICE_HELP)
@@ -71,8 +71,8 @@ pub fn set_configuration_subcommand() -> App<'static, 'static> {
         )
         .arg(
             Arg::with_name("start-block")
-                .help("Order number of the Ethereum block where scanning for your personal transaction should start at.\
-                Be careful not to choose a number higher than the historically biggest one on the blockchain.")  // change the narrative TODO: you should maybe create an interactive help reflecting values in the config table
+                .help("Order number of the Ethereum block where scanning for transactions will start at.\
+                Refrain from choosing a number higher than of the last block that was attached to the blockchain.") //TODO: let's find a way in the future to be more specific about some reasonable range
                 .long("start-block")
                 .value_name("START-BLOCK")
                 .takes_value(true)

@@ -29,7 +29,6 @@ use crate::sub_lib::peer_actors::BindMessage;
 use crate::sub_lib::wallet::{Wallet, WalletError};
 use crate::test_utils::main_cryptde;
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
-use core::unicode::conversions::to_lower;
 use rustc_hex::ToHex;
 use std::str::FromStr;
 
@@ -605,11 +604,6 @@ impl Configurator {
                 if "blah" == &msg.name {
                     //use the password in the function that you will call here
                     unimplemented!();
-                } else if "blah" == &msg.name {
-                    //use the password in the function that you will call here
-                    unimplemented!();
-                } else {
-                    unimplemented!()
                 }
             }
         };
