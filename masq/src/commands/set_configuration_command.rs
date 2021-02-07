@@ -14,23 +14,20 @@ pub struct SetConfigurationCommand {
 
 impl SetConfigurationCommand {
     pub fn new(pieces: Vec<String>) -> Result<Self, String> {
-        if pieces.len() != 1 {
-            let preserved_name = pieces[1].clone().replace("--", "");
-            match set_configuration_subcommand().get_matches_from_safe(pieces) {
-                Ok(matches) => Ok(SetConfigurationCommand {
-                    name: preserved_name.clone(),
-                    value: matches
-                        .value_of(preserved_name)
-                        .expect("should not reach this state")
-                        .to_string(),
-                }),
-                Err(e) => Err(format!("{}", e)),
-            }
+        let preserved_name = if pieces.len() == 1 {
+            pieces[0].clone()
         } else {
-            Err(
-                "This command is not supported without arguments. Try help for more information"
+            pieces[1].clone().replace("--", "")
+        };
+        match set_configuration_subcommand().get_matches_from_safe(pieces) {
+            Ok(matches) => Ok(SetConfigurationCommand {
+                name: preserved_name.clone(),
+                value: matches
+                    .value_of(preserved_name)
+                    .expect("should not reach this state")
                     .to_string(),
-            )
+            }),
+            Err(e) => Err(format!("{}", e)),
         }
     }
 }

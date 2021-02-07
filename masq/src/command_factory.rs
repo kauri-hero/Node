@@ -276,11 +276,7 @@ mod tests {
             CommandSyntax(msg) => msg,
             x => panic!("Expected syntax error, got {:?}", x),
         };
-        assert_eq!(
-            msg,
-            "This command is not supported without arguments. Try help for more information"
-                .to_string(),
-        );
+        assert!(msg.contains("error: The following required arguments were not provided:"));
     }
 
     #[test]
