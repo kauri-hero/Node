@@ -4,6 +4,7 @@ use crate::dns_modifier_factory::DnsModifierFactory;
 use crate::dns_modifier_factory::DnsModifierFactoryReal;
 use masq_lib::command::Command;
 use masq_lib::command::StdStreams;
+use masq_lib::short_writeln;
 use std::io::Write;
 
 enum Action {
@@ -50,8 +51,7 @@ impl DnsUtility {
                 short_writeln!(
                     streams.stderr,
                     "Don't know how to modify DNS settings on this system"
-                )
-                .expect("Could not writeln");
+                );
                 return 1;
             }
             Some(m) => m,
@@ -68,8 +68,7 @@ impl DnsUtility {
         match result {
             Ok(_) => 0,
             Err(msg) => {
-                short_writeln!(streams.stderr, "Cannot {}: {}", name, msg)
-                    .expect("Could not writeln");
+                short_writeln!(streams.stderr, "Cannot {}: {}", name, msg);
                 1
             }
         }
@@ -89,7 +88,7 @@ impl DnsUtility {
                 e
             ),
         };
-        short_writeln!(stdout, "{}", status).expect("write doesn't work");
+        short_writeln!(stdout, "{}", status);
         Ok(())
     }
 
@@ -104,8 +103,7 @@ impl DnsUtility {
         short_writeln!(
             streams.stderr,
             "Usage: dns_utility [ subvert | revert | inspect | status ]"
-        )
-        .expect("Internal error");
+        );
         1
     }
 }
