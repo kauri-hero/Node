@@ -55,7 +55,7 @@ impl DnsModifier for DynamicStoreDnsModifier {
             Some(sa) => sa,
         };
         let output = active_addresses.join("\n");
-        writeln!(stdout, "{}", output).expect("write is broken");
+        short_writeln!(stdout, "{}", output).expect("write is broken");
         Ok(())
     }
 }

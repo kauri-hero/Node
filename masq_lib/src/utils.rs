@@ -109,36 +109,23 @@ pub fn exit_process(code: i32, message: &str) {
     }
 }
 
-// #[macro_export]
-// macro_rules! short_writeln {
-//     ($dst:expr, $($text:literal)+) => (
-//         std::writeln!($dst,$($text)+).expect("short_writeln failed")
-//     );
-//     ($dst:expr, $($braces:literal)+,$($text:literal),+) => (
-//         std::writeln!($dst,$($braces)+,$($text),+).expect("short_writeln failed")
-//     );
-// }
 #[macro_export]
 macro_rules! short_writeln {
-    ( $($arg:tt),*) => {
-         writeln!($($arg),*).expect("short_writeln failed")
+    ($dst:expr) => (
+         writeln!($dst).expect("short_writeln failed")
+    );
+    ( $form: expr, $($arg:tt)*) => {
+         writeln!($form, $($arg)*).expect("short_writeln failed")
     };
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use regex::internal::Input;
-    use std::io::stdout;
-    use std::io::Write as FmtWrite;
-    use std::fmt::Write;
-    use websocket::websocket_base::stream::sync::TcpStream;
-    use std::process::ChildStdin;
-    use std::{thread, process};
-    use std::time::Duration;
-    use std::sync::mpsc::channel;
     use std::env::current_dir;
-    use std::fs::{create_dir_all, File, OpenOptions, create_dir};
+    use std::fmt::Write;
+    use std::fs::{create_dir, File, OpenOptions};
+    use std::io::Write as FmtWrite;
 
     #[test]
     fn index_of_fails_to_find_nonexistent_needle_in_haystack() {
@@ -222,11 +209,20 @@ mod tests {
     fn short_writeln_write_text_properly() {
         let mut buffer = Vec::new();
         let mut string_buffer = String::new();
-        short_writeln!(buffer,"This is the first line");
-        short_writeln!(string_buffer,"{}\n{}","This is another line","Will this work?");
+        short_writeln!(buffer, "This is the first line");
+        short_writeln!(
+            string_buffer,
+            "{}\n{}",
+            "This is another line",
+            "Will this work?"
+        );
+        short_writeln!(string_buffer);
 
         assert_eq!(buffer.as_slice(), "This is the first line\n".as_bytes());
-        assert_eq!(string_buffer, "This is another line\nWill this work?\n".to_string());
+        assert_eq!(
+            string_buffer,
+            "This is another line\nWill this work?\n\n".to_string()
+        );
     }
 
     #[test]
@@ -234,10 +230,13 @@ mod tests {
     fn short_writeln_panic_politely_with_a_message() {
         let path = current_dir().unwrap();
         let path = path.join("test").join("other_tests");
-        create_dir(&path);
+        create_dir(&path).unwrap();
         let full_path = path.join("short-writeln.txt");
         File::create(&full_path).unwrap();
         let mut file_handle = OpenOptions::new().read(true).open(full_path).unwrap();
-        short_writeln!(file_handle,"This is the first line and others will come...maybe");
+        short_writeln!(
+            file_handle,
+            "This is the first line and others will come...maybe"
+        );
     }
 }

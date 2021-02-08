@@ -57,7 +57,7 @@ impl Command for MockNode {
         let node_addr = match Self::interpret_args(args, streams.stderr) {
             Ok(p) => p,
             Err(msg) => {
-                writeln!(streams.stderr, "{}", msg).unwrap();
+                short_writeln!(streams.stderr, "{}", msg).unwrap();
                 return 1;
             }
         };
@@ -67,10 +67,11 @@ impl Command for MockNode {
             self.control_stream_port,
         )) {
             Err(e) => {
-                writeln!(
+                short_writeln!(
                     streams.stderr,
                     "Couldn't bind TcpListener to control port {}: {}",
-                    self.control_stream_port, e
+                    self.control_stream_port,
+                    e
                 )
                 .unwrap();
                 return 1;
@@ -79,10 +80,11 @@ impl Command for MockNode {
         };
         let (control_stream, _) = match listener.accept() {
             Err(e) => {
-                writeln!(
+                short_writeln!(
                     streams.stderr,
                     "Error accepting control stream on port {}: {}",
-                    self.control_stream_port, e
+                    self.control_stream_port,
+                    e
                 )
                 .unwrap();
                 return 1;
@@ -146,7 +148,7 @@ impl MockNode {
             .map(|r| r.err().unwrap())
             .collect::<Vec<String>>();
         if !open_err_msgs.is_empty() {
-            writeln!(stderr, "{}", open_err_msgs.join("\n")).unwrap();
+            short_writeln!(stderr, "{}", open_err_msgs.join("\n")).unwrap();
             return 1;
         }
 
@@ -161,18 +163,19 @@ impl MockNode {
                         let data_hunk: DataHunk = chunk.chunk.into();
                         let mut write_streams = self.write_streams();
                         if !write_streams.contains_key(&data_hunk.to) {
-                            let stream = match TcpStream::connect(data_hunk.to) {
-                                Err(e) => {
-                                    writeln!(
+                            let stream =
+                                match TcpStream::connect(data_hunk.to) {
+                                    Err(e) => {
+                                        short_writeln!(
                                         stderr,
                                         "Error connecting new stream from {} to {}, ignoring: {}",
                                         local_addr, data_hunk.to, e
                                     )
-                                    .unwrap();
-                                    continue;
-                                }
-                                Ok(s) => s,
-                            };
+                                        .unwrap();
+                                        continue;
+                                    }
+                                    Ok(s) => s,
+                                };
                             write_streams.insert(
                                 data_hunk.to,
                                 stream.try_clone().unwrap_or_else(|_| {
@@ -198,7 +201,7 @@ impl MockNode {
             }
             match self.read_control_stream().read(&mut buf) {
                 Err(ref e) if indicates_dead_stream(e.kind()) => {
-                    writeln!(stderr, "Read error from control stream: {}", e).unwrap();
+                    short_writeln!(stderr, "Read error from control stream: {}", e).unwrap();
                     let _ = self.write_control_stream().shutdown(Shutdown::Both);
                     break;
                 }
@@ -224,7 +227,7 @@ impl MockNode {
     }
 
     fn usage(stderr: &mut dyn Write) -> u8 {
-        writeln! (stderr, "Usage: MockNode <IP address>:<port>,[<port>,...] where <IP address> is the address MockNode is running on and <port> is between {} and {}",
+        short_writeln! (stderr, "Usage: MockNode <IP address>:<port>,[<port>,...] where <IP address> is the address MockNode is running on and <port> is between {} and {}",
             LOWEST_USABLE_INSECURE_PORT,
             HIGHEST_USABLE_PORT,
         ).unwrap ();
