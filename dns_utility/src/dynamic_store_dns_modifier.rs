@@ -11,6 +11,7 @@ use core_foundation::dictionary::CFDictionary;
 use core_foundation::propertylist::CFPropertyList;
 use core_foundation::propertylist::CFPropertyListSubClass;
 use core_foundation::string::CFString;
+use masq_lib::short_writeln;
 use std::io::Write;
 use system_configuration::dynamic_store::SCDynamicStore;
 use system_configuration::dynamic_store::SCDynamicStoreBuilder;
