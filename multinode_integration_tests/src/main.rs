@@ -57,7 +57,7 @@ impl Command for MockNode {
         let node_addr = match Self::interpret_args(args, streams.stderr) {
             Ok(p) => p,
             Err(msg) => {
-                short_writeln!(streams.stderr, "{}", msg).unwrap();
+                writeln!(streams.stderr, "{}", msg).unwrap();
                 return 1;
             }
         };
@@ -67,7 +67,7 @@ impl Command for MockNode {
             self.control_stream_port,
         )) {
             Err(e) => {
-                short_writeln!(
+                writeln!(
                     streams.stderr,
                     "Couldn't bind TcpListener to control port {}: {}",
                     self.control_stream_port,
@@ -80,7 +80,7 @@ impl Command for MockNode {
         };
         let (control_stream, _) = match listener.accept() {
             Err(e) => {
-                short_writeln!(
+                writeln!(
                     streams.stderr,
                     "Error accepting control stream on port {}: {}",
                     self.control_stream_port,
@@ -148,7 +148,7 @@ impl MockNode {
             .map(|r| r.err().unwrap())
             .collect::<Vec<String>>();
         if !open_err_msgs.is_empty() {
-            short_writeln!(stderr, "{}", open_err_msgs.join("\n")).unwrap();
+            writeln!(stderr, "{}", open_err_msgs.join("\n")).unwrap();
             return 1;
         }
 
@@ -166,7 +166,7 @@ impl MockNode {
                             let stream =
                                 match TcpStream::connect(data_hunk.to) {
                                     Err(e) => {
-                                        short_writeln!(
+                                        writeln!(
                                         stderr,
                                         "Error connecting new stream from {} to {}, ignoring: {}",
                                         local_addr, data_hunk.to, e
@@ -201,7 +201,7 @@ impl MockNode {
             }
             match self.read_control_stream().read(&mut buf) {
                 Err(ref e) if indicates_dead_stream(e.kind()) => {
-                    short_writeln!(stderr, "Read error from control stream: {}", e).unwrap();
+                    writeln!(stderr, "Read error from control stream: {}", e).unwrap();
                     let _ = self.write_control_stream().shutdown(Shutdown::Both);
                     break;
                 }
@@ -227,7 +227,7 @@ impl MockNode {
     }
 
     fn usage(stderr: &mut dyn Write) -> u8 {
-        short_writeln! (stderr, "Usage: MockNode <IP address>:<port>,[<port>,...] where <IP address> is the address MockNode is running on and <port> is between {} and {}",
+        writeln! (stderr, "Usage: MockNode <IP address>:<port>,[<port>,...] where <IP address> is the address MockNode is running on and <port> is between {} and {}",
             LOWEST_USABLE_INSECURE_PORT,
             HIGHEST_USABLE_PORT,
         ).unwrap ();
