@@ -70,8 +70,7 @@ impl Command for MockNode {
                 writeln!(
                     streams.stderr,
                     "Couldn't bind TcpListener to control port {}: {}",
-                    self.control_stream_port,
-                    e
+                    self.control_stream_port, e
                 )
                 .unwrap();
                 return 1;
@@ -83,8 +82,7 @@ impl Command for MockNode {
                 writeln!(
                     streams.stderr,
                     "Error accepting control stream on port {}: {}",
-                    self.control_stream_port,
-                    e
+                    self.control_stream_port, e
                 )
                 .unwrap();
                 return 1;
@@ -163,19 +161,18 @@ impl MockNode {
                         let data_hunk: DataHunk = chunk.chunk.into();
                         let mut write_streams = self.write_streams();
                         if !write_streams.contains_key(&data_hunk.to) {
-                            let stream =
-                                match TcpStream::connect(data_hunk.to) {
-                                    Err(e) => {
-                                        writeln!(
+                            let stream = match TcpStream::connect(data_hunk.to) {
+                                Err(e) => {
+                                    writeln!(
                                         stderr,
                                         "Error connecting new stream from {} to {}, ignoring: {}",
                                         local_addr, data_hunk.to, e
                                     )
-                                        .unwrap();
-                                        continue;
-                                    }
-                                    Ok(s) => s,
-                                };
+                                    .unwrap();
+                                    continue;
+                                }
+                                Ok(s) => s,
+                            };
                             write_streams.insert(
                                 data_hunk.to,
                                 stream.try_clone().unwrap_or_else(|_| {
