@@ -47,7 +47,7 @@ impl Command for SetConfigurationCommand {
         };
 
         let _: UiSetConfigurationResponse = transaction(input, context, 1000)?;
-        writeln!(context.stdout(), "Setting the parameter went correct").expect("writeln! failed");
+        writeln!(context.stdout(), "Parameter was successfully set").expect("writeln! failed");
         Ok(())
     }
 
@@ -147,6 +147,6 @@ mod tests {
         let stderr = stderr_arc.lock().unwrap();
         assert_eq!(*stderr.get_string(), String::new());
         let stdout = stdout_arc.lock().unwrap();
-        assert_eq!(&stdout.get_string(), "Setting the parameter went correct\n");
+        assert_eq!(&stdout.get_string(), "Parameter was successfully set\n");
     }
 }
