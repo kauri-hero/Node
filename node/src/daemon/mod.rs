@@ -22,9 +22,9 @@ use lazy_static::lazy_static;
 use masq_lib::messages::UiSetupResponseValueStatus::{Configured, Set};
 use masq_lib::messages::{
     FromMessageBody, ToMessageBody, UiNodeCrashedBroadcast, UiRedirect, UiSetupBroadcast,
-    UiSetupRequest, UiSetupResponse, UiSetupResponseValue, UiStartOrder, UiStartResponse,
-    NODE_ALREADY_RUNNING_ERROR, NODE_LAUNCH_ERROR, NODE_NOT_RUNNING_ERROR,
+    UiSetupRequest, UiSetupResponse, UiSetupResponseValue, UiStartOrder, UiStartResponse
 };
+use masq_lib::constants::{NODE_ALREADY_RUNNING_ERROR, NODE_LAUNCH_ERROR, NODE_NOT_RUNNING_ERROR};
 use masq_lib::shared_schema::ConfiguratorError;
 use masq_lib::ui_gateway::MessagePath::{Conversation, FireAndForget};
 use masq_lib::ui_gateway::MessageTarget::ClientId;
@@ -433,9 +433,9 @@ mod tests {
     use masq_lib::messages::{
         CrashReason, UiFinancialsRequest, UiNodeCrashedBroadcast, UiRedirect, UiSetupBroadcast,
         UiSetupRequest, UiSetupRequestValue, UiSetupResponse, UiSetupResponseValue,
-        UiSetupResponseValueStatus, UiShutdownRequest, UiStartOrder, UiStartResponse,
-        NODE_ALREADY_RUNNING_ERROR, NODE_LAUNCH_ERROR, NODE_NOT_RUNNING_ERROR,
+        UiSetupResponseValueStatus, UiShutdownRequest, UiStartOrder, UiStartResponse
     };
+    use masq_lib::constants::{NODE_ALREADY_RUNNING_ERROR, NODE_LAUNCH_ERROR, NODE_NOT_RUNNING_ERROR};
     use masq_lib::shared_schema::ConfiguratorError;
     use masq_lib::test_utils::environment_guard::{ClapGuard, EnvironmentGuard};
     use masq_lib::test_utils::utils::{ensure_node_home_directory_exists, TEST_DEFAULT_CHAIN_NAME};

@@ -10,7 +10,8 @@ use futures::Future;
 use futures::Sink;
 use futures::Stream;
 use itertools::Itertools;
-use masq_lib::messages::{ToMessageBody, UiUnmarshalError, NODE_UI_PROTOCOL, UNMARSHAL_ERROR};
+use masq_lib::constants::UNMARSHAL_ERROR;
+use masq_lib::messages::{ToMessageBody, UiUnmarshalError, NODE_UI_PROTOCOL};
 use masq_lib::ui_gateway::MessagePath::Conversation;
 use masq_lib::ui_gateway::MessageTarget::ClientId;
 use masq_lib::ui_gateway::{MessageBody, MessageTarget, NodeFromUiMessage, NodeToUiMessage};
@@ -455,9 +456,9 @@ mod tests {
     use actix::{Actor, Addr};
     use futures::future::lazy;
     use masq_lib::messages::{
-        FromMessageBody, UiShutdownRequest, UiStartOrder, UiUnmarshalError, NODE_UI_PROTOCOL,
-        UNMARSHAL_ERROR,
+        FromMessageBody, UiShutdownRequest, UiStartOrder, UiUnmarshalError, NODE_UI_PROTOCOL
     };
+    use masq_lib::constants::UNMARSHAL_ERROR;
     use masq_lib::test_utils::ui_connection::UiConnection;
     use masq_lib::ui_gateway::MessagePath::FireAndForget;
     use masq_lib::ui_gateway::NodeFromUiMessage;
