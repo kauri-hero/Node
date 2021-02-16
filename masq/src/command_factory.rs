@@ -237,33 +237,6 @@ mod tests {
     }
 
     #[test]
-    fn complains_about_set_configuration_command_with_bad_syntax() {
-        let subject = CommandFactoryReal::new();
-
-        let result = subject
-            .make(vec![
-                "set-configuration".to_string(),
-                "gas-price".to_string(),
-                "blah".to_string(),
-            ])
-            .err()
-            .unwrap();
-
-        let msg = match result {
-            CommandSyntax(msg) => msg,
-            x => panic!("Expected syntax error, got {:?}", x),
-        };
-        assert_eq!(msg.contains("Found argument '"), true, "{}", msg);
-        assert_eq!(msg.contains("gas-price"), true, "{}", msg);
-        assert_eq!(
-            msg.contains("which wasn't expected, or isn't valid in this context"),
-            true,
-            "{}",
-            msg
-        );
-    }
-
-    #[test]
     fn complains_about_set_configuration_command_with_no_parameters() {
         let subject = CommandFactoryReal::new();
 

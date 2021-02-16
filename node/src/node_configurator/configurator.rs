@@ -45,6 +45,7 @@ pub const MNEMONIC_PHRASE_ERROR: u64 = CONFIGURATOR_PREFIX | 9;
 pub const VALUE_MISSING_ERROR: u64 = CONFIGURATOR_PREFIX | 10;
 pub const EARLY_QUESTIONING_ABOUT_DATA: u64 = CONFIGURATOR_PREFIX | 11;
 pub const UNRECOGNIZED_PARAMETER: u64 = CONFIGURATOR_PREFIX | 12;
+pub const NON_PARSABLE_VALUE: u64 = CONFIGURATOR_PREFIX | 13;
 
 pub struct Configurator {
     persistent_config: Box<dyn PersistentConfiguration>,
@@ -626,10 +627,7 @@ impl Configurator {
                 }
             }
             Some(_password) => {
-                if "blah" == &msg.name {
-                    //use the password in the function that you will call here
-                    unimplemented!();
-                }
+                unimplemented!();
             }
         };
 
@@ -640,10 +638,13 @@ impl Configurator {
         string_price: String,
         config: &mut Box<dyn PersistentConfiguration>,
     ) -> Result<(), (u64, String)> {
-        let price_number = string_price.parse::<u64>().expect("Fake string number");
+        let price_number = match string_price.parse::<u64>() {
+            Ok(num) => num,
+            Err(e) => return Err((NON_PARSABLE_VALUE, format!("gas price: {:?}", e))),
+        };
         match config.set_gas_price(price_number) {
             Ok(_) => Ok(()),
-            Err(e) => Err((CONFIGURATOR_WRITE_ERROR, format!("gas-price: {:?}", e))),
+            Err(e) => Err((CONFIGURATOR_WRITE_ERROR, format!("gas price: {:?}", e))),
         }
     }
 
@@ -651,10 +652,13 @@ impl Configurator {
         string_number: String,
         config: &mut Box<dyn PersistentConfiguration>,
     ) -> Result<(), (u64, String)> {
-        let block_number = string_number.parse::<u64>().expect("Fake string number");
+        let block_number = match string_number.parse::<u64>() {
+            Ok(num) => num,
+            Err(e) => return Err((NON_PARSABLE_VALUE, format!("start block: {:?}", e))),
+        };
         match config.set_start_block(block_number) {
             Ok(_) => Ok(()),
-            Err(e) => Err((CONFIGURATOR_WRITE_ERROR, format!("start-block: {:?}", e))),
+            Err(e) => Err((CONFIGURATOR_WRITE_ERROR, format!("start block: {:?}", e))),
         }
     }
 
@@ -1698,7 +1702,10 @@ mod tests {
 
     #[test]
     fn handle_set_configuration_works_for_gas_price() {
-        let persistent_config = PersistentConfigurationMock::new().set_gas_price_result(Ok(()));
+        let set_gas_price_params_arc = Arc::new(Mutex::new(vec![]));
+        let persistent_config = PersistentConfigurationMock::new()
+            .set_gas_price_params(&set_gas_price_params_arc)
+            .set_gas_price_result(Ok(()));
         let mut subject = make_subject(Some(persistent_config));
 
         let result = subject.handle_set_configuration(
@@ -1717,10 +1724,12 @@ mod tests {
                 payload: Ok(r#"{}"#.to_string())
             }
         );
+        let set_gas_price_params = set_gas_price_params_arc.lock().unwrap();
+        assert_eq!(*set_gas_price_params, vec![68])
     }
 
     #[test]
-    fn handle_set_configuration_handles_failure_on_gas_price() {
+    fn handle_set_configuration_handles_failure_on_gas_price_database_issue() {
         let persistent_config = PersistentConfigurationMock::new()
             .set_gas_price_result(Err(PersistentConfigError::TransactionError));
         let mut subject = make_subject(Some(persistent_config));
@@ -1740,14 +1749,40 @@ mod tests {
                 path: MessagePath::Conversation(4000),
                 payload: Err((
                     CONFIGURATOR_WRITE_ERROR,
-                    "gas-price: TransactionError".to_string()
+                    "gas price: TransactionError".to_string()
                 ))
             }
         );
     }
 
     #[test]
-    fn handle_set_configuration_works_terminates_after_failure_immediately() {
+    fn handle_set_configuration_handle_gas_price_non_parsable_value_issue() {
+        let persistent_config = PersistentConfigurationMock::new();
+        let mut subject = make_subject(Some(persistent_config));
+
+        let result = subject.handle_set_configuration(
+            UiSetConfigurationRequest {
+                name: "gas-price".to_string(),
+                value: "fiftyfive".to_string(),
+            },
+            4000,
+        );
+
+        assert_eq!(
+            result,
+            MessageBody {
+                opcode: "setConfiguration".to_string(),
+                path: MessagePath::Conversation(4000),
+                payload: Err((
+                    NON_PARSABLE_VALUE,
+                    "gas price: ParseIntError { kind: InvalidDigit }".to_string()
+                ))
+            }
+        );
+    }
+
+    #[test]
+    fn handle_set_configuration_terminates_after_failure_on_start_block() {
         let persistent_config = PersistentConfigurationMock::new().set_start_block_result(Err(
             PersistentConfigError::DatabaseError("dunno".to_string()),
         ));
@@ -1768,7 +1803,33 @@ mod tests {
                 path: MessagePath::Conversation(4000),
                 payload: Err((
                     CONFIGURATOR_WRITE_ERROR,
-                    r#"start-block: DatabaseError("dunno")"#.to_string()
+                    r#"start block: DatabaseError("dunno")"#.to_string()
+                ))
+            }
+        );
+    }
+
+    #[test]
+    fn handle_set_configuration_argue_decently_about_non_parsable_value_at_start_block() {
+        let persistent_config = PersistentConfigurationMock::new();
+        let mut subject = make_subject(Some(persistent_config));
+
+        let result = subject.handle_set_configuration(
+            UiSetConfigurationRequest {
+                name: "start-block".to_string(),
+                value: "hundred_and_half".to_string(),
+            },
+            4000,
+        );
+
+        assert_eq!(
+            result,
+            MessageBody {
+                opcode: "setConfiguration".to_string(),
+                path: MessagePath::Conversation(4000),
+                payload: Err((
+                    NON_PARSABLE_VALUE,
+                    r#"start block: ParseIntError { kind: InvalidDigit }"#.to_string()
                 ))
             }
         );

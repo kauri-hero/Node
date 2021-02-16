@@ -708,7 +708,7 @@ Node.
 ##### Layout:
 ```
 "payload": {
-    "name": <string>
+    "name": <string>,
     "value": <string>
 }
 ```
@@ -717,16 +717,13 @@ At the current time, there are no parameters requiring the password among those 
 
 ##### Description:
 This is a message used to change a parameter whilst the Node is running. The range of supported parameters (available
-to be set by this command) may get larger with time.You always can set only a value for a single parameter. Multiple
-queries are not permitted and a warning message is displayed at such case. Also, this command with no parameters will
-call a warning since does not serve either that way. 
+to be set by this command) may get larger with time.
 
 The `name` field in the payload is the name of the parameter which the user wants to modify and has this form:
 e.g. start-block or gas-price (with a dash between words).
 
-The `value` field in the payload is the value which the user wants to assign to the respective parameter newly.
-There is a parsing check on the side of the CLI UI which warrants that an unparseable value will not reach the
-code on the side of the Node if numeric parameters are in considerations.  
+The `value` field in the payload is the value to be assigned to the parameter. It must always be specified as a string,
+even for parameters whose values are natively of other types.  
 
 #### `setConfiguration`
 ##### Direction: Response

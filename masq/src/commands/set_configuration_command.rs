@@ -14,10 +14,12 @@ pub struct SetConfigurationCommand {
 
 impl SetConfigurationCommand {
     pub fn new(pieces: Vec<String>) -> Result<Self, String> {
-        let preserved_name = if pieces.len() == 1 {
-            pieces[0].clone()
-        } else {
-            pieces[1].clone().replace("--", "")
+        // if anything wrong, Clap will handle it at get_matches_from_safe
+        let mut preserved_name: String = String::new();
+        if pieces.len() != 1 {
+            preserved_name
+                .push_str(&pieces[1].clone().replace("--", ""))
+                .to_owned()
         };
         match set_configuration_subcommand().get_matches_from_safe(pieces) {
             Ok(matches) => Ok(SetConfigurationCommand {
@@ -34,7 +36,7 @@ impl SetConfigurationCommand {
 
 fn validate_start_block(start_block: String) -> Result<(), String> {
     match start_block.parse::<u64>() {
-        Ok(_) => Ok(()), // TODO consider how to write a broader check; now I am heading to a check on the side of Node.
+        Ok(_) => Ok(()),
         _ => Err(start_block),
     }
 }

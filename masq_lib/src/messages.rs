@@ -579,15 +579,9 @@ conversation_message!(UiRecoverWalletsRequest, "recoverWallet");
 pub struct UiRecoverWalletsResponse {}
 conversation_message!(UiRecoverWalletsResponse, "recoverWallet");
 
-// #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-// pub struct UiSetConfigurationBroadcast {}
-// fire_and_forget_message!(UiSetConfigurationBroadcast, "setConfiguration");
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct UiSetConfigurationRequest {
-    #[serde(rename = "name")]
     pub name: String,
-    #[serde(rename = "value")]
     pub value: String,
 }
 conversation_message!(UiSetConfigurationRequest, "setConfiguration");

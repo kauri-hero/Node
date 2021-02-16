@@ -114,7 +114,7 @@ impl Handler<ReportAccountsPayable> for BlockchainBridge {
                                 nonce,
                                 self.persistent_config
                                     .gas_price()
-                                    .expect("drive me out!")
+                                    .expect("drive me out!") //TODO finish this so that is an error is handled
                                     .expect("default value unaccepted"),
                             ) {
                                 Ok(hash) => Ok(Payment::new(
