@@ -18,8 +18,7 @@ impl SetConfigurationCommand {
         // if anything wrong, Clap will handle it at get_matches_from_safe
         let mut preserved_name: String = String::new();
         if pieces.len() != 1 {
-            preserved_name
-                .push_str(&pieces[1].clone().replace("--", ""))
+            preserved_name.push_str(&pieces[1].clone().replace("--", ""))
         };
         match set_configuration_subcommand().get_matches_from_safe(pieces) {
             Ok(matches) => Ok(SetConfigurationCommand {
