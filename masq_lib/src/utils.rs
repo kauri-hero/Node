@@ -112,10 +112,10 @@ pub fn exit_process(code: i32, message: &str) {
 #[macro_export]
 macro_rules! short_writeln {
     ($dst:expr) => (
-         writeln!($dst).expect("short_writeln failed")
+         writeln!($dst).expect("writeln failed")
     );
     ( $form: expr, $($arg:tt)*) => {
-         writeln!($form, $($arg)*).expect("short_writeln failed")
+         writeln!($form, $($arg)*).expect("writeln failed")
     };
 }
 
@@ -226,16 +226,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "short_writeln failed")]
+    #[should_panic(expected = "writeln failed")]
     fn short_writeln_panic_politely_with_a_message() {
         let path = current_dir().unwrap();
         let path = path.join("test").join("other_tests");
-        create_dir(&path).unwrap_or(()); //can be error if already exists
+        create_dir(&path).unwrap_or(()); //can be an error if already exists
         let full_path = path.join("short-writeln.txt");
         File::create(&full_path).unwrap();
-        let mut file_handle = OpenOptions::new().read(true).open(full_path).unwrap();
+        let mut read_only_file_handle = OpenOptions::new().read(true).open(full_path).unwrap();
         short_writeln!(
-            file_handle,
+            read_only_file_handle,
             "This is the first line and others will come...maybe"
         );
     }
