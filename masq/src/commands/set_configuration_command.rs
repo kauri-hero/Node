@@ -20,7 +20,6 @@ impl SetConfigurationCommand {
         if pieces.len() != 1 {
             preserved_name
                 .push_str(&pieces[1].clone().replace("--", ""))
-                .to_owned()
         };
         match set_configuration_subcommand().get_matches_from_safe(pieces) {
             Ok(matches) => Ok(SetConfigurationCommand {
@@ -74,8 +73,7 @@ pub fn set_configuration_subcommand() -> App<'static, 'static> {
         )
         .arg(
             Arg::with_name("start-block")
-                .help("Order number of the Ethereum block where scanning for transactions will start. \
-                Refrain from choosing a number higher than of the last block in the blockchain.") //TODO: let's find a way in the future to be more specific about some reasonable range
+                .help("Order number of the Ethereum block where scanning for transactions will start.")
                 .long("start-block")
                 .value_name("START-BLOCK")
                 .takes_value(true)
