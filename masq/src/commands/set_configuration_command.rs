@@ -4,6 +4,7 @@ use clap::{App, Arg, ArgGroup, SubCommand};
 use masq_lib::messages::{UiSetConfigurationRequest, UiSetConfigurationResponse};
 use masq_lib::shared_schema::common_validators;
 use masq_lib::shared_schema::GAS_PRICE_HELP;
+use masq_lib::short_writeln;
 use std::any::Any;
 
 #[derive(Debug, PartialEq)]
@@ -49,7 +50,7 @@ impl Command for SetConfigurationCommand {
         };
 
         let _: UiSetConfigurationResponse = transaction(input, context, 1000)?;
-        writeln!(context.stdout(), "Parameter was successfully set").expect("writeln! failed");
+        short_writeln!(context.stdout(), "Parameter was successfully set");
         Ok(())
     }
 
