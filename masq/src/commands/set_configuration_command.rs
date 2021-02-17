@@ -72,7 +72,7 @@ pub fn set_configuration_subcommand() -> App<'static, 'static> {
         )
         .arg(
             Arg::with_name("start-block")
-                .help("Order number of the Ethereum block where scanning for transactions will start.")
+                .help("Ordinal number of the Ethereum block where scanning for transactions will start.")
                 .long("start-block")
                 .value_name("START-BLOCK")
                 .takes_value(true)
