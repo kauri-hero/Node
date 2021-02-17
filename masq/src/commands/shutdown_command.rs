@@ -8,6 +8,7 @@ use crate::commands::commands_common::{
     transaction, Command, CommandError, STANDARD_COMMAND_TIMEOUT_MILLIS,
 };
 use clap::{App, SubCommand};
+use masq_lib::constants::NODE_NOT_RUNNING_ERROR;
 use masq_lib::messages::{UiShutdownRequest, UiShutdownResponse, NODE_NOT_RUNNING_ERROR};
 use masq_lib::short_writeln;
 use masq_lib::utils::localhost;
@@ -16,7 +17,6 @@ use std::net::{SocketAddr, TcpStream};
 use std::ops::Add;
 use std::thread;
 use std::time::{Duration, Instant};
-use masq_lib::constants::NODE_NOT_RUNNING_ERROR;
 
 const DEFAULT_SHUTDOWN_ATTEMPT_INTERVAL: u64 = 250; // milliseconds
 const DEFAULT_SHUTDOWN_ATTEMPT_LIMIT: u64 = 4;

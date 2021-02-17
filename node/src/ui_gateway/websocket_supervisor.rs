@@ -455,10 +455,10 @@ mod tests {
     use actix::System;
     use actix::{Actor, Addr};
     use futures::future::lazy;
-    use masq_lib::messages::{
-        FromMessageBody, UiShutdownRequest, UiStartOrder, UiUnmarshalError, NODE_UI_PROTOCOL
-    };
     use masq_lib::constants::UNMARSHAL_ERROR;
+    use masq_lib::messages::{
+        FromMessageBody, UiShutdownRequest, UiStartOrder, UiUnmarshalError, NODE_UI_PROTOCOL,
+    };
     use masq_lib::test_utils::ui_connection::UiConnection;
     use masq_lib::ui_gateway::MessagePath::FireAndForget;
     use masq_lib::ui_gateway::NodeFromUiMessage;

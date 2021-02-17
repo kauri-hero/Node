@@ -28,9 +28,14 @@ use crate::sub_lib::peer_actors::BindMessage;
 use crate::sub_lib::wallet::{Wallet, WalletError};
 use crate::test_utils::main_cryptde;
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
+use masq_lib::constants::{
+    ALREADY_INITIALIZED_ERROR, BAD_PASSWORD_ERROR, CONFIGURATOR_READ_ERROR,
+    CONFIGURATOR_WRITE_ERROR, DERIVATION_PATH_ERROR, EARLY_QUESTIONING_ABOUT_DATA,
+    ILLEGAL_MNEMONIC_WORD_COUNT_ERROR, KEY_PAIR_CONSTRUCTION_ERROR, MNEMONIC_PHRASE_ERROR,
+    UNRECOGNIZED_MNEMONIC_LANGUAGE_ERROR, VALUE_MISSING_ERROR,
+};
 use rustc_hex::ToHex;
 use std::str::FromStr;
-use masq_lib::constants::{CONFIGURATOR_WRITE_ERROR, DERIVATION_PATH_ERROR, UNRECOGNIZED_MNEMONIC_LANGUAGE_ERROR, ALREADY_INITIALIZED_ERROR, CONFIGURATOR_READ_ERROR, KEY_PAIR_CONSTRUCTION_ERROR, EARLY_QUESTIONING_ABOUT_DATA, BAD_PASSWORD_ERROR, ILLEGAL_MNEMONIC_WORD_COUNT_ERROR, VALUE_MISSING_ERROR, MNEMONIC_PHRASE_ERROR};
 
 pub struct Configurator {
     persistent_config: Box<dyn PersistentConfiguration>,
@@ -641,9 +646,14 @@ mod tests {
     use crate::sub_lib::cryptde::PlainData;
     use crate::sub_lib::wallet::Wallet;
     use bip39::{Language, Mnemonic};
+    use masq_lib::constants::{
+        ALREADY_INITIALIZED_ERROR, BAD_PASSWORD_ERROR, CONFIGURATOR_READ_ERROR,
+        EARLY_QUESTIONING_ABOUT_DATA, ILLEGAL_MNEMONIC_WORD_COUNT_ERROR,
+        KEY_PAIR_CONSTRUCTION_ERROR, MNEMONIC_PHRASE_ERROR, UNRECOGNIZED_MNEMONIC_LANGUAGE_ERROR,
+        VALUE_MISSING_ERROR,
+    };
     use masq_lib::test_utils::utils::{ensure_node_home_directory_exists, DEFAULT_CHAIN_ID};
     use masq_lib::utils::derivation_path;
-    use masq_lib::constants::{CONFIGURATOR_READ_ERROR, KEY_PAIR_CONSTRUCTION_ERROR, EARLY_QUESTIONING_ABOUT_DATA, BAD_PASSWORD_ERROR, UNRECOGNIZED_MNEMONIC_LANGUAGE_ERROR, ALREADY_INITIALIZED_ERROR, MNEMONIC_PHRASE_ERROR, ILLEGAL_MNEMONIC_WORD_COUNT_ERROR, VALUE_MISSING_ERROR};
 
     #[test]
     fn constructor_connects_with_database() {

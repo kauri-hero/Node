@@ -15,7 +15,6 @@ use std::fmt::Debug;
 
 pub const NODE_UI_PROTOCOL: &str = "MASQNode-UIv2";
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum UiMessageError {
     UnexpectedMessage(String, MessagePath),
