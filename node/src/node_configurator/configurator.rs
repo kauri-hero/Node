@@ -33,7 +33,8 @@ use masq_lib::constants::{
     ALREADY_INITIALIZED_ERROR, BAD_PASSWORD_ERROR, CONFIGURATOR_READ_ERROR,
     CONFIGURATOR_WRITE_ERROR, DERIVATION_PATH_ERROR, EARLY_QUESTIONING_ABOUT_DATA,
     ILLEGAL_MNEMONIC_WORD_COUNT_ERROR, KEY_PAIR_CONSTRUCTION_ERROR, MNEMONIC_PHRASE_ERROR,
-    UNRECOGNIZED_MNEMONIC_LANGUAGE_ERROR, VALUE_MISSING_ERROR,
+    NON_PARSABLE_VALUE, UNRECOGNIZED_MNEMONIC_LANGUAGE_ERROR, UNRECOGNIZED_PARAMETER,
+    VALUE_MISSING_ERROR,
 };
 use rustc_hex::ToHex;
 use std::str::FromStr;
@@ -62,20 +63,20 @@ impl Handler<NodeFromUiMessage> for Configurator {
     type Result = ();
 
     fn handle(&mut self, msg: NodeFromUiMessage, _ctx: &mut Self::Context) -> Self::Result {
-        if let Ok((body, context_id)) = UiChangePasswordRequest::fmb(msg.clone().body) {
+        if let Ok((body, context_id)) = UiChangePasswordRequest::fmb(&msg.body) {
             let client_id = msg.client_id;
             self.call_handler(msg, |c| {
                 c.handle_change_password(body, client_id, context_id)
             });
-        } else if let Ok((body, context_id)) = UiCheckPasswordRequest::fmb(msg.clone().body) {
+        } else if let Ok((body, context_id)) = UiCheckPasswordRequest::fmb(&msg.body) {
             self.call_handler(msg, |c| c.handle_check_password(body, context_id));
-        } else if let Ok((body, context_id)) = UiConfigurationRequest::fmb(msg.clone().body) {
+        } else if let Ok((body, context_id)) = UiConfigurationRequest::fmb(&msg.body) {
             self.call_handler(msg, |c| c.handle_configuration(body, context_id));
         } else if let Ok((body, context_id)) = UiGenerateWalletsRequest::fmb(&msg.body) {
             self.call_handler(msg, |c| c.handle_generate_wallets(body, context_id));
         } else if let Ok((body, context_id)) = UiRecoverWalletsRequest::fmb(&msg.body) {
             self.call_handler(msg, |c| c.handle_recover_wallets(body, context_id));
-        } else if let Ok((body, context_id)) = UiSetConfigurationRequest::fmb(msg.clone().body) {
+        } else if let Ok((body, context_id)) = UiSetConfigurationRequest::fmb(&msg.body) {
             self.call_handler(msg, |c| c.handle_set_configuration(body, context_id));
         } else if let Ok((body, context_id)) = UiWalletAddressesRequest::fmb(&msg.body) {
             self.call_handler(msg, |c| c.handle_wallet_addresses(body, context_id));
@@ -1240,7 +1241,7 @@ mod tests {
         let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
         let response = ui_gateway_recording.get_record::<NodeToUiMessage>(0);
         let (generated_wallets, context_id) =
-            UiGenerateWalletsResponse::fmb(&response.body.clone()).unwrap();
+            UiGenerateWalletsResponse::fmb(&response.body).unwrap();
         assert_eq!(context_id, 4321);
         assert_eq!(generated_wallets.mnemonic_phrase.len(), 24);
         let mnemonic_phrase = generated_wallets.mnemonic_phrase.join(" ");
@@ -1697,7 +1698,7 @@ mod tests {
         system.run();
         let ui_gateway_recording = ui_gateway_recording_arc.lock().unwrap();
         let response = ui_gateway_recording.get_record::<NodeToUiMessage>(0);
-        let (_, context_id) = UiSetConfigurationResponse::fmb(response.body.clone()).unwrap();
+        let (_, context_id) = UiSetConfigurationResponse::fmb(&response.body).unwrap();
         assert_eq!(context_id, 4444);
 
         let check_start_block_params = set_start_block_params_arc.lock().unwrap();
@@ -1942,7 +1943,7 @@ mod tests {
         let mut subject = make_subject(Some(persistent_config));
 
         let (configuration, context_id) =
-            UiConfigurationResponse::fmb(subject.handle_configuration(
+            UiConfigurationResponse::fmb(&subject.handle_configuration(
                 UiConfigurationRequest {
                     db_password_opt: None,
                 },
