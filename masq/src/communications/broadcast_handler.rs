@@ -45,7 +45,7 @@ impl BroadcastHandler for BroadcastHandlerReal {
         thread::spawn(move || {
             let (mut stdout, mut stderr) = stream_factory.make();
             loop {
-                Self::thread_loop_guts(&message_rx, stdout.as_mut(), stderr.as_mut())
+                Self::thread_loop_guts(&message_rx, &self.output_synchronizer, stdout.as_mut(), stderr.as_mut())
             }
         });
         Box::new(BroadcastHandleGeneric { message_tx })
@@ -59,12 +59,14 @@ impl BroadcastHandlerReal {
 
     fn handle_message_body(
         message_body_result: Result<MessageBody, RecvError>,
+        output_synchronizer: &Arc<Mutex<()>>,
         stdout: &mut dyn Write,
         stderr: &mut dyn Write,
     ) {
         match message_body_result {
             Err(_) => (), // Receiver died; masq is going down
             Ok(message_body) => {
+                let _sync = output_synchronizer.lock().expect ("CommandProcessor is dead");
                 if let Ok((body, _)) = UiSetupBroadcast::fmb(message_body.clone()) {
                     SetupCommand::handle_broadcast(body, stdout);
                 } else if let Ok((body, _)) = UiNodeCrashedBroadcast::fmb(message_body.clone()) {
@@ -87,11 +89,13 @@ impl BroadcastHandlerReal {
 
     fn thread_loop_guts(
         message_rx: &Receiver<MessageBody>,
+        output_synchronizer: &Arc<Mutex<()>>,
         stdout: &mut dyn Write,
         stderr: &mut dyn Write,
     ) {
         select! {
-            recv(message_rx) -> message_body_result => Self::handle_message_body (message_body_result, stdout, stderr),
+            recv(message_rx) -> message_body_result => Self::handle_message_body (message_body_result,
+                output_synchronizer, stdout, stderr),
         }
     }
 }
