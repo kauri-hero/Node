@@ -117,7 +117,7 @@ impl Main {
         processor: &mut dyn CommandProcessor,
         streams: &mut StdStreams<'_>,
     ) -> u8 {
-        let mut line_reader = self.buf_read_factory.make();
+        let mut line_reader = self.buf_read_factory.make(processor.synchronizer());
         loop {
             let args = match Self::accept_subcommand(&mut line_reader) {
                 Ok(Some(args)) => args,
@@ -188,11 +188,13 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     struct BufReadFactoryMock {
+        synchronizers: Arc<Mutex<Vec<Arc<Mutex<()>>>>>,
         interactive: RefCell<Option<ByteArrayReader>>,
     }
 
     impl BufReadFactory for BufReadFactoryMock {
-        fn make(&self) -> Box<dyn BufRead> {
+        fn make(&self, output_synchronizer: Arc<Mutex<()>>) -> Box<dyn BufRead> {
+            self.synchronizers.lock().unwrap().push(output_synchronizer);
             Box::new(self.interactive.borrow_mut().take().unwrap())
         }
     }
@@ -200,6 +202,7 @@ mod tests {
     impl BufReadFactoryMock {
         pub fn new() -> BufReadFactoryMock {
             BufReadFactoryMock {
+                synchronizers: Arc::new(Mutex::new(vec![])),
                 interactive: RefCell::new(None),
             }
         }
@@ -333,6 +336,7 @@ mod tests {
             .make_result(Ok(Box::new(FakeCommand::new("setup command"))))
             .make_result(Ok(Box::new(FakeCommand::new("start command"))));
         let processor = CommandProcessorMock::new()
+            .synchronizer_result(Arc::new(Mutex::new(())))
             .process_result(Ok(()))
             .process_result(Ok(()));
         let processor_factory =
@@ -367,7 +371,9 @@ mod tests {
     fn interactive_mode_works_for_stdin_read_error() {
         let command_factory = CommandFactoryMock::new();
         let close_params_arc = Arc::new(Mutex::new(vec![]));
-        let processor = CommandProcessorMock::new().close_params(&close_params_arc);
+        let processor = CommandProcessorMock::new()
+            .synchronizer_result(Arc::new(Mutex::new(())))
+            .close_params(&close_params_arc);
         let processor_factory =
             CommandProcessorFactoryMock::new().make_result(Ok(Box::new(processor)));
         let buf_read_factory = BufReadFactoryMock::new().make_interactive_reader(
@@ -400,7 +406,7 @@ mod tests {
             .make_result(Err(CommandFactoryError::UnrecognizedSubcommand(
                 "Booga!".to_string(),
             )));
-        let processor = CommandProcessorMock::new();
+        let processor = CommandProcessorMock::new().synchronizer_result(Arc::new(Mutex::new(())));
         let processor_factory =
             CommandProcessorFactoryMock::new().make_result(Ok(Box::new(processor)));
         let mut subject = Main {
@@ -434,7 +440,7 @@ mod tests {
             .make_result(Err(CommandFactoryError::CommandSyntax(
                 "Booga!".to_string(),
             )));
-        let processor = CommandProcessorMock::new();
+        let processor = CommandProcessorMock::new().synchronizer_result(Arc::new(Mutex::new(())));
         let processor_factory =
             CommandProcessorFactoryMock::new().make_result(Ok(Box::new(processor)));
         let mut subject = Main {

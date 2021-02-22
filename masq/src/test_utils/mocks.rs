@@ -159,12 +159,17 @@ impl CommandContextMock {
 
 #[derive(Default)]
 pub struct CommandProcessorMock {
+    synchronizer_results: RefCell<Vec<Arc<Mutex<()>>>>,
     process_params: Arc<Mutex<Vec<Box<dyn Command>>>>,
     process_results: RefCell<Vec<Result<(), CommandError>>>,
     close_params: Arc<Mutex<Vec<()>>>,
 }
 
 impl CommandProcessor for CommandProcessorMock {
+    fn synchronizer(&self) -> Arc<Mutex<()>> {
+        self.synchronizer_results.borrow_mut().remove(0)
+    }
+
     fn process(&mut self, command: Box<dyn Command>) -> Result<(), CommandError> {
         self.process_params.lock().unwrap().push(command);
         self.process_results.borrow_mut().remove(0)
@@ -178,6 +183,11 @@ impl CommandProcessor for CommandProcessorMock {
 impl CommandProcessorMock {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn synchronizer_result(self, result: Arc<Mutex<()>>) -> Self {
+        self.synchronizer_results.borrow_mut().push(result);
+        self
     }
 
     pub fn process_params(mut self, params: &Arc<Mutex<Vec<Box<dyn Command>>>>) -> Self {

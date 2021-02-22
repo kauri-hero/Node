@@ -6,6 +6,7 @@ use crate::commands::commands_common::{Command, CommandError};
 use crate::communications::broadcast_handler::StreamFactory;
 use crate::schema::app;
 use clap::value_t;
+use std::sync::{Arc, Mutex};
 
 pub trait CommandProcessorFactory {
     fn make(
@@ -41,6 +42,7 @@ impl CommandProcessorFactoryReal {
 }
 
 pub trait CommandProcessor {
+    fn synchronizer(&self) -> Arc<Mutex<()>>;
     fn process(&mut self, command: Box<dyn Command>) -> Result<(), CommandError>;
     fn close(&mut self);
 }
@@ -51,8 +53,13 @@ pub struct CommandProcessorReal {
 }
 
 impl CommandProcessor for CommandProcessorReal {
+    fn synchronizer(&self) -> Arc<Mutex<()>> {
+        unimplemented!()
+    }
+
     fn process(&mut self, command: Box<dyn Command>) -> Result<(), CommandError> {
-        let _sync = self.context.output_synchronizer.lock().expect ("BroadcastHandler is dead");
+        let arc = self.context.output_synchronizer.clone();
+        let _sync = arc.lock().expect("BroadcastHandler is dead");
         command.execute(&mut self.context)
     }
 
@@ -70,10 +77,6 @@ mod tests {
     use masq_lib::messages::{UiShutdownRequest, UiShutdownResponse};
     use masq_lib::test_utils::mock_websockets_server::MockWebSocketsServer;
     use masq_lib::utils::find_free_port;
-    use crate::test_utils::mocks::{TestStreamFactory};
-    use masq_lib::test_utils::fake_stream_holder::ByteArrayWriter;
-    use std::thread;
-    use std::time::Duration;
 
     #[derive(Debug)]
     struct TestCommand {}
