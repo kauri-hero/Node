@@ -54,13 +54,14 @@ pub struct CommandProcessorReal {
 
 impl CommandProcessor for CommandProcessorReal {
     fn synchronizer(&self) -> Arc<Mutex<()>> {
-        unimplemented!()
+        self.context.output_synchronizer.clone()
     }
 
     fn process(&mut self, command: Box<dyn Command>) -> Result<(), CommandError> {
         let arc = self.context.output_synchronizer.clone();
         let _sync = arc.lock().expect("BroadcastHandler is dead");
-        command.execute(&mut self.context)
+        let result = command.execute(&mut self.context);
+        result
     }
 
     fn close(&mut self) {
@@ -100,7 +101,10 @@ mod tests {
         ];
         let subject = CommandProcessorFactoryReal::new();
 
-        let result = subject.make(Box::new(StreamFactoryReal::new()), &args);
+        let result = subject.make(
+            Box::new(StreamFactoryReal::new()),
+            &args
+        );
 
         match result.err() {
             Some(CommandError::ConnectionProblem(_)) => (),
@@ -124,7 +128,10 @@ mod tests {
         let stop_handle = server.start();
 
         let mut result = subject
-            .make(Box::new(StreamFactoryReal::new()), &args)
+            .make(
+                Box::new(StreamFactoryReal::new()),
+                &args
+            )
             .unwrap();
 
         let command = TestCommand {};
