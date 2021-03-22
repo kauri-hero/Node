@@ -9,7 +9,7 @@ use crate::protocols::pcp::pcp_packet::{Opcode, PcpPacket, ResultCode};
 use crate::protocols::utils::{Direction, Packet};
 use rand::RngCore;
 use std::convert::TryFrom;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 trait MappingNonceFactory {
@@ -183,7 +183,7 @@ mod tests {
     use std::collections::HashSet;
     use std::io;
     use std::io::ErrorKind;
-    use std::net::{SocketAddr, SocketAddrV6};
+    use std::net::{SocketAddr, SocketAddrV4};
     use std::str::FromStr;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
@@ -253,7 +253,7 @@ mod tests {
         match result {
             AutomapError::SocketBindingError(msg, addr) => {
                 assert_eq!(msg, io_error_str);
-                assert_eq!(addr.ip(), IpAddr::from_str("::").unwrap());
+                assert_eq!(addr.ip(), IpAddr::from_str("0.0.0.0").unwrap());
                 assert_eq!(addr.port(), 5566);
             }
             e => panic!("Expected SocketBindingError, got {:?}", e),
@@ -526,11 +526,9 @@ mod tests {
         let make_params = make_params_arc.lock().unwrap();
         assert_eq!(
             *make_params,
-            vec![SocketAddr::V6(SocketAddrV6::new(
-                Ipv6Addr::from_str("::").unwrap(),
+            vec![SocketAddr::V4(SocketAddrV4::new(
+                Ipv4Addr::new (0, 0, 0, 0),
                 34567,
-                0,
-                0
             ))]
         );
         let read_timeout_params = read_timeout_params_arc.lock().unwrap();
