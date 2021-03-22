@@ -116,7 +116,7 @@ impl PcpTransactor {
             .marshal(&mut buffer)
             .expect("Bad packet construction");
         let socket_addr = SocketAddr::new(
-            IpAddr::V4(Ipv4Addr::new (0, 0, 0, 0)),
+            IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
             self.free_port_factory.make(),
         );
         let socket = match self.socket_factory.make(socket_addr) {
@@ -527,8 +527,8 @@ mod tests {
         assert_eq!(
             *make_params,
             vec![SocketAddr::V4(SocketAddrV4::new(
-                Ipv4Addr::new (0, 0, 0, 0),
-                34567,
+                Ipv4Addr::from_str("0.0.0.0").unwrap(),
+                34567
             ))]
         );
         let read_timeout_params = read_timeout_params_arc.lock().unwrap();
